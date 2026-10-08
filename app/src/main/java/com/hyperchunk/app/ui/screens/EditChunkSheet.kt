@@ -198,11 +198,7 @@ fun EditChunkSheet(
                         val catColor = if (isMonochrome) {
                             cat.toMonochromeColor()
                         } else {
-                            try {
-                                Color(android.graphics.Color.parseColor(cat.defaultColor))
-                            } catch (_: Exception) {
-                                primaryColor
-                            }
+                            com.hyperchunk.app.ui.theme.parseHexColor(cat.defaultColor, primaryColor)
                         }
 
                         Box(
@@ -504,14 +500,31 @@ fun EditChunkSheet(
                         onClick = {
                             val sMin = startHour * 60 + startMinute
                             val eMin = endHour * 60 + endMinute
-                            val adjustedEnd = if (eMin <= sMin) (eMin + 1440) else eMin
+
+                            // Handle edge cases:
+                            // 1. If start and end are identical (0 duration), fallback to user's default duration
+                            // 2. If end is exactly 00:00 midnight (eMin == 0) and start is > 0, store 1440 to represent end of 24h day
+                            // 3. If end is non-zero, preserve eMin (supports overnight chunks like 23:00 -> 06:00)
+                            val finalEnd = when {
+                                sMin == eMin -> {
+                                    val candidate = sMin + settings.defaultDurationMinutes
+                                    if (candidate >= 1440) {
+                                        val wrapped = candidate % 1440
+                                        if (wrapped == 0) 1440 else wrapped
+                                    } else {
+                                        candidate
+                                    }
+                                }
+                                eMin == 0 && sMin > 0 -> 1440
+                                else -> eMin
+                            }
 
                             val updated = TimeChunk(
                                 id = chunkToEdit?.id ?: java.util.UUID.randomUUID().toString(),
                                 dayOfWeek = dayOfWeek,
                                 title = if (title.isBlank()) category.displayName else title.trim(),
                                 startMinuteOfDay = sMin,
-                                endMinuteOfDay = if (adjustedEnd > 1440) 1440 else adjustedEnd,
+                                endMinuteOfDay = finalEnd,
                                 category = category,
                                 colorHex = category.defaultColor,
                                 hasAlarm = hasAlarm,

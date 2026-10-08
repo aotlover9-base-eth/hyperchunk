@@ -26,3 +26,33 @@ val HyperBlue = Color(0xFF3B82F6)
 val TextPrimary = Color(0xFFF8FAFC)
 val TextSecondary = Color(0xFF94A3B8)
 val TextTertiary = Color(0xFF64748B)
+
+/**
+ * Pure Kotlin hex parser that safely converts hex strings (#RRGGBB, #AARRGGBB, #RGB)
+ * to Compose Color without relying on android.graphics.Color (making it 100% JVM test friendly).
+ */
+fun parseHexColor(hex: String?, fallback: Color = HyperPrimary): Color {
+    if (hex.isNullOrBlank()) return fallback
+    val clean = hex.trim().removePrefix("#")
+    return try {
+        when (clean.length) {
+            6 -> {
+                val rgb = clean.toLong(16)
+                Color(0xFF000000 or rgb)
+            }
+            8 -> {
+                val argb = clean.toLong(16)
+                Color(argb)
+            }
+            3 -> {
+                val r = clean[0].digitToInt(16)
+                val g = clean[1].digitToInt(16)
+                val b = clean[2].digitToInt(16)
+                Color(0xFF000000 or ((r * 17L) shl 16) or ((g * 17L) shl 8) or (b * 17L))
+            }
+            else -> fallback
+        }
+    } catch (_: Exception) {
+        fallback
+    }
+}

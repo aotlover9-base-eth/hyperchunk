@@ -75,24 +75,42 @@ fun Chunk24hBar(
 
             // Draw each chunk block
             chunks.forEach { chunk ->
-                val startRatio = chunk.startMinuteOfDay / totalMinutes
-                val durationRatio = chunk.durationMinutes / totalMinutes
+                if (chunk.durationMinutes <= 0) return@forEach
+                val color = com.hyperchunk.app.ui.theme.parseHexColor(chunk.colorHex, HyperCyan)
 
-                val x = startRatio * canvasWidth
-                val width = durationRatio * canvasWidth
+                if (chunk.endMinuteOfDay >= chunk.startMinuteOfDay) {
+                    val startRatio = chunk.startMinuteOfDay / totalMinutes
+                    val durationRatio = chunk.durationMinutes / totalMinutes
+                    val x = startRatio * canvasWidth
+                    val width = durationRatio * canvasWidth
 
-                val color = try {
-                    Color(android.graphics.Color.parseColor(chunk.colorHex))
-                } catch (e: Exception) {
-                    HyperCyan
+                    drawRoundRect(
+                        color = color.copy(alpha = 0.85f),
+                        topLeft = Offset(x, 0f),
+                        size = Size(width.coerceAtLeast(3f), canvasHeight),
+                        cornerRadius = CornerRadius(4f, 4f)
+                    )
+                } else {
+                    // Overnight chunk wrapping around midnight (draw both sides)
+                    val x1 = (chunk.startMinuteOfDay / totalMinutes) * canvasWidth
+                    val w1 = ((1440 - chunk.startMinuteOfDay) / totalMinutes) * canvasWidth
+                    drawRoundRect(
+                        color = color.copy(alpha = 0.85f),
+                        topLeft = Offset(x1, 0f),
+                        size = Size(w1.coerceAtLeast(2f), canvasHeight),
+                        cornerRadius = CornerRadius(4f, 4f)
+                    )
+
+                    val w2 = (chunk.endMinuteOfDay / totalMinutes) * canvasWidth
+                    if (w2 > 0f) {
+                        drawRoundRect(
+                            color = color.copy(alpha = 0.85f),
+                            topLeft = Offset(0f, 0f),
+                            size = Size(w2.coerceAtLeast(2f), canvasHeight),
+                            cornerRadius = CornerRadius(4f, 4f)
+                        )
+                    }
                 }
-
-                drawRoundRect(
-                    color = color.copy(alpha = 0.85f),
-                    topLeft = Offset(x, 0f),
-                    size = Size(width.coerceAtLeast(3f), canvasHeight),
-                    cornerRadius = CornerRadius(4f, 4f)
-                )
             }
 
             // Draw moving current-time needle indicator

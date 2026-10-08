@@ -67,11 +67,7 @@ fun ChunkCard(
     val categoryColor = if (isMonochrome) {
         chunk.toMonochromeColor()
     } else {
-        try {
-            Color(android.graphics.Color.parseColor(chunk.colorHex))
-        } catch (e: Exception) {
-            appColors.primary
-        }
+        com.hyperchunk.app.ui.theme.parseHexColor(chunk.colorHex, appColors.primary)
     }
 
     val borderColor by animateColorAsState(

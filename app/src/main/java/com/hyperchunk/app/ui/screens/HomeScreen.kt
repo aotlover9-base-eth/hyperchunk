@@ -85,18 +85,19 @@ fun HomeScreen(
         mutableIntStateOf(cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE))
     }
 
-    val todayDayOfWeek = remember {
-        val cal = Calendar.getInstance()
-        when (cal.get(Calendar.DAY_OF_WEEK)) {
-            Calendar.MONDAY -> 1
-            Calendar.TUESDAY -> 2
-            Calendar.WEDNESDAY -> 3
-            Calendar.THURSDAY -> 4
-            Calendar.FRIDAY -> 5
-            Calendar.SATURDAY -> 6
-            Calendar.SUNDAY -> 7
-            else -> 1
-        }
+    fun getDayOfWeek(cal: Calendar): Int = when (cal.get(Calendar.DAY_OF_WEEK)) {
+        Calendar.MONDAY -> 1
+        Calendar.TUESDAY -> 2
+        Calendar.WEDNESDAY -> 3
+        Calendar.THURSDAY -> 4
+        Calendar.FRIDAY -> 5
+        Calendar.SATURDAY -> 6
+        Calendar.SUNDAY -> 7
+        else -> 1
+    }
+
+    var todayDayOfWeek by remember {
+        mutableIntStateOf(getDayOfWeek(Calendar.getInstance()))
     }
 
     var selectedDay by remember { mutableIntStateOf(todayDayOfWeek) }
@@ -106,6 +107,10 @@ fun HomeScreen(
         while (true) {
             val cal = Calendar.getInstance()
             currentMinuteOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+            val freshDay = getDayOfWeek(cal)
+            if (freshDay != todayDayOfWeek) {
+                todayDayOfWeek = freshDay
+            }
             try {
                 com.hyperchunk.app.widget.HyperChunkWidgetProvider.updateAllWidgets(context)
             } catch (_: Exception) {}
@@ -482,14 +487,29 @@ fun HomeScreen(
             dayName = dayNames[selectedDay - 1],
             onDismiss = { showRoutineHubSheet = false },
             onSyncToWeekdays = {
-                repository.syncDayToTargets(selectedDay, listOf(1, 2, 3, 4, 5))
+                val targets = listOf(1, 2, 3, 4, 5)
+                targets.forEach { targetDay ->
+                    repository.getChunksForDay(targetDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
+                }
+                repository.syncDayToTargets(selectedDay, targets)
+                targets.forEach { targetDay ->
+                    repository.getChunksForDay(targetDay).filter { it.hasAlarm }.forEach { onScheduleAlarm(it) }
+                }
                 showRoutineHubSheet = false
             },
             onSyncToWeekend = {
-                repository.syncDayToTargets(selectedDay, listOf(6, 7))
+                val targets = listOf(6, 7)
+                targets.forEach { targetDay ->
+                    repository.getChunksForDay(targetDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
+                }
+                repository.syncDayToTargets(selectedDay, targets)
+                targets.forEach { targetDay ->
+                    repository.getChunksForDay(targetDay).filter { it.hasAlarm }.forEach { onScheduleAlarm(it) }
+                }
                 showRoutineHubSheet = false
             },
             onApplyPreset = { preset ->
+                repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
                 repository.applyPreset(selectedDay, preset)
                 repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach {
                     onScheduleAlarm(it)
@@ -497,6 +517,7 @@ fun HomeScreen(
                 showRoutineHubSheet = false
             },
             onClearDay = {
+                repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
                 repository.clearDay(selectedDay)
                 showRoutineHubSheet = false
             }

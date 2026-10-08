@@ -281,6 +281,7 @@ fun Chunk24hChronograph(
 
                 // 5. Category Segment Arcs (with angular gaps)
                 chunks.forEach { chunk ->
+                    if (chunk.durationMinutes <= 0) return@forEach
                     val rawSweep = ((chunk.durationMinutes / 1440f) * 360f)
                     val startAngle = (chunk.startMinuteOfDay / 1440f) * 360f - 90f
 
@@ -292,11 +293,7 @@ fun Chunk24hChronograph(
                     val chunkColor = if (isMonochrome) {
                         chunk.toMonochromeColor()
                     } else {
-                        try {
-                            Color(android.graphics.Color.parseColor(chunk.colorHex))
-                        } catch (_: Exception) {
-                            appColors.primary
-                        }
+                        com.hyperchunk.app.ui.theme.parseHexColor(chunk.colorHex, appColors.primary)
                     }
 
                     val isActive = activeChunk?.id == chunk.id
@@ -328,10 +325,15 @@ fun Chunk24hChronograph(
 
                 // 6. Crisp Dark Radial Separator Slit Lines at every chunk boundary
                 chunks.forEach { chunk ->
-                    val boundaryAngles = listOf(
-                        (chunk.startMinuteOfDay / 1440f) * 360f - 90f,
-                        (chunk.endMinuteOfDay / 1440f) * 360f - 90f
-                    )
+                    if (chunk.durationMinutes <= 0) return@forEach
+                    val boundaryAngles = if (chunk.startMinuteOfDay == chunk.endMinuteOfDay) {
+                        listOf((chunk.startMinuteOfDay / 1440f) * 360f - 90f)
+                    } else {
+                        listOf(
+                            (chunk.startMinuteOfDay / 1440f) * 360f - 90f,
+                            (chunk.endMinuteOfDay / 1440f) * 360f - 90f
+                        )
+                    }
                     for (bAngle in boundaryAngles) {
                         val bRad = Math.toRadians(bAngle.toDouble())
                         val cosB = cos(bRad).toFloat()
@@ -404,11 +406,7 @@ fun Chunk24hChronograph(
                     val chunkColor = if (isMonochrome) {
                         activeChunk.toMonochromeColor()
                     } else {
-                        try {
-                            Color(android.graphics.Color.parseColor(activeChunk.colorHex))
-                        } catch (_: Exception) {
-                            appColors.primary
-                        }
+                        com.hyperchunk.app.ui.theme.parseHexColor(activeChunk.colorHex, appColors.primary)
                     }
 
                     Box(

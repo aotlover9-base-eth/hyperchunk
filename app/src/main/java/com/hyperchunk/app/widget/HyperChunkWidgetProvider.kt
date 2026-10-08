@@ -143,7 +143,11 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                     R.id.widget_task_time,
                     "${nextChunk.startTime12h} – ${nextChunk.endTime12h}"
                 )
-                val minsUntil = nextChunk.startMinuteOfDay - currentMinute
+                val minsUntil = if (nextChunk.startMinuteOfDay >= currentMinute) {
+                    nextChunk.startMinuteOfDay - currentMinute
+                } else {
+                    (1440 - currentMinute) + nextChunk.startMinuteOfDay
+                }
                 val untilStr = if (minsUntil >= 60) {
                     "Starts in ${minsUntil / 60}h ${minsUntil % 60}m"
                 } else {

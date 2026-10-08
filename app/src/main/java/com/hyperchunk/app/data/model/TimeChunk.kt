@@ -131,16 +131,9 @@ fun TimeChunk.toMonochromeColor(): Color {
     return if (colorHex.equals(category.defaultColor, ignoreCase = true)) {
         category.toMonochromeColor()
     } else {
-        try {
-            val parsed = android.graphics.Color.parseColor(colorHex)
-            val r = android.graphics.Color.red(parsed) / 255f
-            val g = android.graphics.Color.green(parsed) / 255f
-            val b = android.graphics.Color.blue(parsed) / 255f
-            val lum = 0.2126f * r + 0.7152f * g + 0.0722f * b
-            val adjusted = 0.45f + 0.55f * lum
-            Color(adjusted, adjusted, adjusted)
-        } catch (_: Exception) {
-            category.toMonochromeColor()
-        }
+        val parsed = com.hyperchunk.app.ui.theme.parseHexColor(colorHex, category.toMonochromeColor())
+        val lum = 0.2126f * parsed.red + 0.7152f * parsed.green + 0.0722f * parsed.blue
+        val adjusted = 0.45f + 0.55f * lum
+        Color(adjusted, adjusted, adjusted)
     }
 }
