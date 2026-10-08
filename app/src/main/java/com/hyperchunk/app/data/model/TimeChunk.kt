@@ -1,5 +1,6 @@
 package com.hyperchunk.app.data.model
 
+import androidx.compose.ui.graphics.Color
 import java.util.UUID
 
 enum class ChunkCategory(
@@ -112,5 +113,34 @@ data class TimeChunk(
             else endMinuteOfDay - currentMinute
         }
         return remaining.coerceAtLeast(0)
+    }
+}
+
+fun ChunkCategory.toMonochromeColor(): Color = when (this) {
+    ChunkCategory.SLEEP -> Color(0xFF475569)   // Deep slate
+    ChunkCategory.ROUTINE -> Color(0xFF94A3B8) // Cool silver
+    ChunkCategory.STUDY -> Color(0xFFE2E8F0)   // Bright platinum
+    ChunkCategory.WORK -> Color(0xFFFFFFFF)    // Pure white (peak focus)
+    ChunkCategory.MEAL -> Color(0xFFCBD5E1)    // Soft titanium
+    ChunkCategory.REST -> Color(0xFF64748B)    // Charcoal slate
+    ChunkCategory.FITNESS -> Color(0xFFF1F5F9) // Stark silver
+    ChunkCategory.CUSTOM -> Color(0xFFD1D5DB)  // Neutral gray
+}
+
+fun TimeChunk.toMonochromeColor(): Color {
+    return if (colorHex.equals(category.defaultColor, ignoreCase = true)) {
+        category.toMonochromeColor()
+    } else {
+        try {
+            val parsed = android.graphics.Color.parseColor(colorHex)
+            val r = android.graphics.Color.red(parsed) / 255f
+            val g = android.graphics.Color.green(parsed) / 255f
+            val b = android.graphics.Color.blue(parsed) / 255f
+            val lum = 0.2126f * r + 0.7152f * g + 0.0722f * b
+            val adjusted = 0.45f + 0.55f * lum
+            Color(adjusted, adjusted, adjusted)
+        } catch (_: Exception) {
+            category.toMonochromeColor()
+        }
     }
 }

@@ -53,6 +53,7 @@ import com.hyperchunk.app.data.model.AccentTheme
 import com.hyperchunk.app.data.model.AppSettings
 import com.hyperchunk.app.data.model.BackgroundTheme
 import com.hyperchunk.app.data.model.HapticMode
+import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.ui.theme.LocalAppThemeColors
 import com.hyperchunk.app.ui.theme.TextPrimary
 import com.hyperchunk.app.ui.theme.TextSecondary
@@ -65,6 +66,7 @@ fun SettingsSheet(
     settings: AppSettings,
     onFontScaleChanged: (Float) -> Unit,
     onCompactModeChanged: (Boolean) -> Unit,
+    onPaletteModeChanged: (PaletteMode) -> Unit,
     onAccentThemeChanged: (AccentTheme) -> Unit,
     onBackgroundThemeChanged: (BackgroundTheme) -> Unit,
     onHapticModeChanged: (HapticMode) -> Unit,
@@ -293,10 +295,96 @@ fun SettingsSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 3. Accent Color Palette
+            // 3. Palette Mode (Colourful vs Monochrome)
             SettingsSectionHeader(
                 icon = { Icon(Icons.Default.Palette, contentDescription = null, tint = appColors.primary, modifier = Modifier.size(18.dp)) },
-                title = "ACCENT COLOR THEME"
+                title = "COLOR PALETTE MODE"
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                PaletteMode.values().forEach { mode ->
+                    val isSelected = (settings.paletteMode == mode)
+                    val cardBg by animateColorAsState(
+                        targetValue = if (isSelected) appColors.surfaceElevated else appColors.surfaceVariant,
+                        label = "paletteCardBg"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(cardBg)
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) appColors.primary else Color.Transparent,
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .clickable { onPaletteModeChanged(mode) }
+                            .padding(vertical = 14.dp, horizontal = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            if (mode == PaletteMode.COLORFUL) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFF3B82F6)))
+                                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFF10B981)))
+                                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFFF59E0B)))
+                                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFFEF4444)))
+                                }
+                            } else {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color.White))
+                                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFFCBD5E1)))
+                                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFF64748B)))
+                                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFF1E293B)).border(1.dp, Color(0x55FFFFFF), CircleShape))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = mode.displayName,
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                                color = if (isSelected) TextPrimary else TextSecondary
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (mode == PaletteMode.COLORFUL) "Multi-color spectrum" else "Pure stark grayscale",
+                                fontSize = 10.sp,
+                                color = TextTertiary
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (settings.paletteMode == PaletteMode.MONOCHROME) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0x1AFFFFFF))
+                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Monochrome Active: All dials, chunks, cards & UI elements rendered in high-contrast grayscale.",
+                        fontSize = 11.sp,
+                        color = Color(0xFFCBD5E1),
+                        lineHeight = 15.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 4. Accent Color Palette
+            SettingsSectionHeader(
+                icon = { Icon(Icons.Default.Palette, contentDescription = null, tint = appColors.primary, modifier = Modifier.size(18.dp)) },
+                title = if (settings.paletteMode == PaletteMode.MONOCHROME) "ACCENT COLOR (COLOURFUL MODE)" else "ACCENT COLOR THEME"
             )
 
             Row(

@@ -52,7 +52,7 @@ fun DaySelector(
             )
 
             val textColor by animateColorAsState(
-                targetValue = if (isSelected) Color.White else TextTertiary,
+                targetValue = if (isSelected) (if (appColors.isMonochrome) Color.Black else Color.White) else TextTertiary,
                 animationSpec = spring(dampingRatio = 0.82f, stiffness = 500f),
                 label = "dayText"
             )

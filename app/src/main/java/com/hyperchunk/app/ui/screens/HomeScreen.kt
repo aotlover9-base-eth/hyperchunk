@@ -142,7 +142,7 @@ fun HomeScreen(
                     showEditSheet = true
                 },
                 containerColor = appColors.primary,
-                contentColor = Color.White,
+                contentColor = appColors.onPrimary,
                 shape = RoundedCornerShape(22.dp),
                 modifier = Modifier.padding(bottom = 8.dp)
             ) {
@@ -509,6 +509,7 @@ fun HomeScreen(
             settings = settings,
             onFontScaleChanged = { settingsRepository.updateFontScale(it) },
             onCompactModeChanged = { settingsRepository.updateCompactMode(it) },
+            onPaletteModeChanged = { settingsRepository.updatePaletteMode(it) },
             onAccentThemeChanged = { settingsRepository.updateAccentTheme(it) },
             onBackgroundThemeChanged = { settingsRepository.updateBackgroundTheme(it) },
             onHapticModeChanged = { settingsRepository.updateHapticMode(it) },

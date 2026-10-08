@@ -55,6 +55,16 @@ enum class BackgroundTheme(
     }
 }
 
+enum class PaletteMode(val id: String, val displayName: String) {
+    COLORFUL("colorful", "Colourful"),
+    MONOCHROME("monochrome", "Monochrome");
+
+    companion object {
+        fun fromId(id: String): PaletteMode =
+            values().firstOrNull { it.id == id } ?: MONOCHROME
+    }
+}
+
 enum class HapticMode(val id: String, val displayName: String) {
     OFF("off", "Off"),
     LIGHT("light", "Light"),
@@ -70,6 +80,7 @@ enum class HapticMode(val id: String, val displayName: String) {
 data class AppSettings(
     val fontScale: Float = 1.0f,
     val compactMode: Boolean = false,
+    val paletteMode: PaletteMode = PaletteMode.MONOCHROME,
     val accentTheme: AccentTheme = AccentTheme.PIXEL_BLUE,
     val backgroundTheme: BackgroundTheme = BackgroundTheme.HYPER_GRAPHITE,
     val hapticMode: HapticMode = HapticMode.SMOOTH,

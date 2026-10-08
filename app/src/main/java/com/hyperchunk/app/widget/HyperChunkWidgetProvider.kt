@@ -10,7 +10,9 @@ import android.os.Bundle
 import android.widget.RemoteViews
 import com.hyperchunk.app.MainActivity
 import com.hyperchunk.app.R
+import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.data.storage.ChunkRepository
+import com.hyperchunk.app.data.storage.SettingsRepository
 import java.util.Calendar
 
 class HyperChunkWidgetProvider : AppWidgetProvider() {
@@ -96,9 +98,15 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             val repo = ChunkRepository(context)
             val (activeChunk, nextChunk) = repo.getCurrentAndNextChunk(dayOfWeek, currentMinute)
 
+            val isMonochrome = try {
+                SettingsRepository(context).settings.value.paletteMode == PaletteMode.MONOCHROME
+            } catch (_: Exception) {
+                false
+            }
+
             if (activeChunk != null) {
                 views.setTextViewText(R.id.widget_status_pill, "NOW ACTIVE")
-                views.setTextColor(R.id.widget_status_pill, 0xFFA8FF78.toInt())
+                views.setTextColor(R.id.widget_status_pill, if (isMonochrome) 0xFFFFFFFF.toInt() else 0xFFA8FF78.toInt())
                 views.setTextViewText(R.id.widget_task_title, activeChunk.title)
                 views.setTextViewText(
                     R.id.widget_task_time,
@@ -111,6 +119,9 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                     "${remaining}m left"
                 }
                 views.setTextViewText(R.id.widget_time_remaining, remainingStr)
+                if (isMonochrome) {
+                    views.setTextColor(R.id.widget_time_remaining, 0xFFE2E8F0.toInt())
+                }
 
                 val progressPercent = (activeChunk.progress(currentMinute) * 100).toInt().coerceIn(0, 100)
                 views.setProgressBar(R.id.widget_progress, 100, progressPercent, false)
@@ -126,7 +137,7 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             } else if (nextChunk != null) {
                 // There is an upcoming chunk today
                 views.setTextViewText(R.id.widget_status_pill, "UPCOMING")
-                views.setTextColor(R.id.widget_status_pill, 0xFF00F2FE.toInt())
+                views.setTextColor(R.id.widget_status_pill, if (isMonochrome) 0xFFCBD5E1.toInt() else 0xFF00F2FE.toInt())
                 views.setTextViewText(R.id.widget_task_title, nextChunk.title)
                 views.setTextViewText(
                     R.id.widget_task_time,

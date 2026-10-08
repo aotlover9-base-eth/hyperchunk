@@ -6,6 +6,7 @@ import com.hyperchunk.app.data.model.AccentTheme
 import com.hyperchunk.app.data.model.AppSettings
 import com.hyperchunk.app.data.model.BackgroundTheme
 import com.hyperchunk.app.data.model.HapticMode
+import com.hyperchunk.app.data.model.PaletteMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +22,7 @@ class SettingsRepository(context: Context) {
     private fun loadSettings(): AppSettings {
         val fontScale = prefs.getFloat(KEY_FONT_SCALE, 1.0f).coerceIn(0.80f, 1.25f)
         val compactMode = prefs.getBoolean(KEY_COMPACT_MODE, false)
+        val paletteId = prefs.getString(KEY_PALETTE_MODE, PaletteMode.MONOCHROME.id) ?: PaletteMode.MONOCHROME.id
         val accentId = prefs.getString(KEY_ACCENT_THEME, AccentTheme.PIXEL_BLUE.id) ?: AccentTheme.PIXEL_BLUE.id
         val bgId = prefs.getString(KEY_BG_THEME, BackgroundTheme.HYPER_GRAPHITE.id) ?: BackgroundTheme.HYPER_GRAPHITE.id
         val hapticId = prefs.getString(KEY_HAPTIC_MODE, HapticMode.SMOOTH.id) ?: HapticMode.SMOOTH.id
@@ -31,6 +33,7 @@ class SettingsRepository(context: Context) {
         return AppSettings(
             fontScale = fontScale,
             compactMode = compactMode,
+            paletteMode = PaletteMode.fromId(paletteId),
             accentTheme = AccentTheme.fromId(accentId),
             backgroundTheme = BackgroundTheme.fromId(bgId),
             hapticMode = HapticMode.fromId(hapticId),
@@ -44,6 +47,7 @@ class SettingsRepository(context: Context) {
         prefs.edit()
             .putFloat(KEY_FONT_SCALE, newSettings.fontScale)
             .putBoolean(KEY_COMPACT_MODE, newSettings.compactMode)
+            .putString(KEY_PALETTE_MODE, newSettings.paletteMode.id)
             .putString(KEY_ACCENT_THEME, newSettings.accentTheme.id)
             .putString(KEY_BG_THEME, newSettings.backgroundTheme.id)
             .putString(KEY_HAPTIC_MODE, newSettings.hapticMode.id)
@@ -60,6 +64,10 @@ class SettingsRepository(context: Context) {
 
     fun updateCompactMode(enabled: Boolean) {
         saveAndEmit(_settings.value.copy(compactMode = enabled))
+    }
+
+    fun updatePaletteMode(mode: PaletteMode) {
+        saveAndEmit(_settings.value.copy(paletteMode = mode))
     }
 
     fun updateAccentTheme(theme: AccentTheme) {
@@ -90,6 +98,7 @@ class SettingsRepository(context: Context) {
         private const val PREFS_NAME = "hyperchunk_settings"
         private const val KEY_FONT_SCALE = "pref_font_scale"
         private const val KEY_COMPACT_MODE = "pref_compact_mode"
+        private const val KEY_PALETTE_MODE = "pref_palette_mode"
         private const val KEY_ACCENT_THEME = "pref_accent_theme"
         private const val KEY_BG_THEME = "pref_bg_theme"
         private const val KEY_HAPTIC_MODE = "pref_haptic_mode"

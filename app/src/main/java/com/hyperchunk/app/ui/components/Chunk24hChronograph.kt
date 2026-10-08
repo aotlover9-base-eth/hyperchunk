@@ -39,7 +39,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.data.model.TimeChunk
+import com.hyperchunk.app.data.model.toMonochromeColor
 import com.hyperchunk.app.ui.theme.HyperEmerald
 import com.hyperchunk.app.ui.theme.HyperSurfaceVariant
 import com.hyperchunk.app.ui.theme.LocalAppSettings
@@ -68,6 +70,7 @@ fun Chunk24hChronograph(
     compactMode: Boolean = LocalAppSettings.current.compactMode
 ) {
     val appColors = LocalAppThemeColors.current
+    val isMonochrome = LocalAppSettings.current.paletteMode == PaletteMode.MONOCHROME
     val currentH = currentMinute / 60
     val currentM = currentMinute % 60
     val hour12 = if (currentH % 12 == 0) 12 else (currentH % 12)
@@ -127,7 +130,7 @@ fun Chunk24hChronograph(
                 text = String.format("%.1fh Scheduled", scheduledHours),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = HyperEmerald
+                color = if (isMonochrome) Color(0xFFE2E8F0) else HyperEmerald
             )
         }
 
@@ -286,10 +289,14 @@ fun Chunk24hChronograph(
                     val drawStart = startAngle + gap / 2f
                     val drawSweep = (rawSweep - gap).coerceAtLeast(1.2f)
 
-                    val chunkColor = try {
-                        Color(android.graphics.Color.parseColor(chunk.colorHex))
-                    } catch (_: Exception) {
-                        appColors.primary
+                    val chunkColor = if (isMonochrome) {
+                        chunk.toMonochromeColor()
+                    } else {
+                        try {
+                            Color(android.graphics.Color.parseColor(chunk.colorHex))
+                        } catch (_: Exception) {
+                            appColors.primary
+                        }
                     }
 
                     val isActive = activeChunk?.id == chunk.id
@@ -297,7 +304,7 @@ fun Chunk24hChronograph(
                     // Active chunk glowing aura
                     if (isActive) {
                         drawArc(
-                            color = chunkColor.copy(alpha = 0.28f),
+                            color = if (isMonochrome) Color.White.copy(alpha = 0.35f) else chunkColor.copy(alpha = 0.28f),
                             startAngle = drawStart,
                             sweepAngle = drawSweep,
                             useCenter = false,
@@ -394,19 +401,23 @@ fun Chunk24hChronograph(
 
                 if (activeChunk != null) {
                     val remaining = activeChunk.remainingMinutes(currentMinute)
-                    val chunkColor = try {
-                        Color(android.graphics.Color.parseColor(activeChunk.colorHex))
-                    } catch (_: Exception) {
-                        appColors.primary
+                    val chunkColor = if (isMonochrome) {
+                        activeChunk.toMonochromeColor()
+                    } else {
+                        try {
+                            Color(android.graphics.Color.parseColor(activeChunk.colorHex))
+                        } catch (_: Exception) {
+                            appColors.primary
+                        }
                     }
 
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
-                            .background(chunkColor.copy(alpha = 0.16f))
+                            .background(if (isMonochrome) Color(0x33FFFFFF) else chunkColor.copy(alpha = 0.16f))
                             .border(
                                 width = 1.dp,
-                                color = chunkColor.copy(alpha = 0.40f),
+                                color = if (isMonochrome) Color.White.copy(alpha = 0.60f) else chunkColor.copy(alpha = 0.40f),
                                 shape = RoundedCornerShape(16.dp)
                             )
                             .padding(horizontal = 14.dp, vertical = 6.dp),
@@ -416,7 +427,7 @@ fun Chunk24hChronograph(
                             text = "${activeChunk.title} • ${remaining}m",
                             fontSize = if (compactMode) 11.5.sp else 12.5.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = chunkColor,
+                            color = if (isMonochrome) Color.White else chunkColor,
                             maxLines = 1
                         )
                     }

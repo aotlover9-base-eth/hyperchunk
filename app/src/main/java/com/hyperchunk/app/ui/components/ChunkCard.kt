@@ -37,7 +37,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.data.model.TimeChunk
+import com.hyperchunk.app.data.model.toMonochromeColor
 import com.hyperchunk.app.ui.theme.HyperAmber
 import com.hyperchunk.app.ui.theme.HyperBorder
 import com.hyperchunk.app.ui.theme.HyperEmerald
@@ -60,15 +62,20 @@ fun ChunkCard(
     val isActive = chunk.isCurrentlyActive(currentMinute)
     val appColors = LocalAppThemeColors.current
     val settings = LocalAppSettings.current
+    val isMonochrome = settings.paletteMode == PaletteMode.MONOCHROME
 
-    val categoryColor = try {
-        Color(android.graphics.Color.parseColor(chunk.colorHex))
-    } catch (e: Exception) {
-        appColors.primary
+    val categoryColor = if (isMonochrome) {
+        chunk.toMonochromeColor()
+    } else {
+        try {
+            Color(android.graphics.Color.parseColor(chunk.colorHex))
+        } catch (e: Exception) {
+            appColors.primary
+        }
     }
 
     val borderColor by animateColorAsState(
-        targetValue = if (isActive) categoryColor.copy(alpha = 0.8f) else appColors.border,
+        targetValue = if (isActive) (if (isMonochrome) Color.White.copy(alpha = 0.85f) else categoryColor.copy(alpha = 0.8f)) else appColors.border,
         label = "cardBorder"
     )
 
@@ -133,21 +140,21 @@ fun ChunkCard(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(categoryColor.copy(alpha = 0.15f))
+                                .background(if (isMonochrome) Color.White.copy(alpha = 0.18f) else categoryColor.copy(alpha = 0.15f))
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .alpha(pulseAlpha)
-                                    .background(categoryColor, CircleShape)
+                                    .background(if (isMonochrome) Color.White else categoryColor, CircleShape)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "NOW",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = categoryColor
+                                color = if (isMonochrome) Color.White else categoryColor
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -161,7 +168,7 @@ fun ChunkCard(
                         Icon(
                             imageVector = if (chunk.hasAlarm) Icons.Default.Notifications else Icons.Default.NotificationsOff,
                             contentDescription = "Toggle Alarm",
-                            tint = if (chunk.hasAlarm) HyperAmber else TextTertiary,
+                            tint = if (chunk.hasAlarm) (if (isMonochrome) Color.White else HyperAmber) else TextTertiary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -200,7 +207,7 @@ fun ChunkCard(
                         .fillMaxWidth()
                         .height(5.dp)
                         .clip(RoundedCornerShape(3.dp)),
-                    color = categoryColor,
+                    color = if (isMonochrome) Color.White else categoryColor,
                     trackColor = Color(0xFF1E2533)
                 )
 
@@ -219,7 +226,7 @@ fun ChunkCard(
                         text = if (remaining >= 60) "${remaining / 60}h ${remaining % 60}m remaining" else "${remaining}m remaining",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = HyperEmerald
+                        color = if (isMonochrome) Color(0xFFE2E8F0) else HyperEmerald
                     )
                 }
             }

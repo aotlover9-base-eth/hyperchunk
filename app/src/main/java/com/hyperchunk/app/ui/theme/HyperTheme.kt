@@ -13,9 +13,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.hyperchunk.app.data.model.AppSettings
+import com.hyperchunk.app.data.model.PaletteMode
 
 data class AppThemeColors(
     val primary: Color,
+    val onPrimary: Color,
+    val isMonochrome: Boolean,
     val bgDark: Color,
     val surface: Color,
     val surfaceVariant: Color,
@@ -26,6 +29,8 @@ data class AppThemeColors(
 val LocalAppThemeColors = staticCompositionLocalOf {
     AppThemeColors(
         primary = HyperPrimary,
+        onPrimary = HyperBgDark,
+        isMonochrome = false,
         bgDark = HyperBgDark,
         surface = HyperSurface,
         surfaceVariant = HyperSurfaceVariant,
@@ -50,27 +55,31 @@ fun HyperTheme(
     settings: AppSettings = AppSettings(),
     content: @Composable () -> Unit
 ) {
-    val accentColor = settings.accentTheme.composeColor
+    val isMonochrome = (settings.paletteMode == PaletteMode.MONOCHROME)
+    val accentColor = if (isMonochrome) Color.White else settings.accentTheme.composeColor
+    val onPrimaryColor = if (isMonochrome) Color(0xFF0C0E12) else settings.backgroundTheme.bgDark
     val bgTheme = settings.backgroundTheme
 
-    val appColors = remember(settings.accentTheme, settings.backgroundTheme) {
+    val appColors = remember(settings.accentTheme, settings.backgroundTheme, settings.paletteMode) {
         AppThemeColors(
             primary = accentColor,
+            onPrimary = onPrimaryColor,
+            isMonochrome = isMonochrome,
             bgDark = bgTheme.bgDark,
             surface = bgTheme.surface,
             surfaceVariant = bgTheme.surfaceVariant,
             surfaceElevated = bgTheme.surfaceElevated,
-            border = bgTheme.border
+            border = if (isMonochrome) Color(0xFF283040) else bgTheme.border
         )
     }
 
     val dynamicColorScheme = remember(appColors) {
         darkColorScheme(
             primary = appColors.primary,
-            onPrimary = appColors.bgDark,
-            secondary = HyperEmerald,
-            onSecondary = appColors.bgDark,
-            tertiary = HyperViolet,
+            onPrimary = appColors.onPrimary,
+            secondary = if (appColors.isMonochrome) Color(0xFFE2E8F0) else HyperEmerald,
+            onSecondary = appColors.onPrimary,
+            tertiary = if (appColors.isMonochrome) Color(0xFF94A3B8) else HyperViolet,
             background = appColors.bgDark,
             onBackground = TextPrimary,
             surface = appColors.surface,

@@ -46,6 +46,7 @@ import com.hyperchunk.app.ui.theme.HyperRose
 import com.hyperchunk.app.ui.theme.HyperSurface
 import com.hyperchunk.app.ui.theme.HyperSurfaceElevated
 import com.hyperchunk.app.ui.theme.HyperSurfaceVariant
+import com.hyperchunk.app.ui.theme.LocalAppThemeColors
 import com.hyperchunk.app.ui.theme.TextPrimary
 import com.hyperchunk.app.ui.theme.TextSecondary
 import com.hyperchunk.app.ui.theme.TextTertiary
@@ -63,12 +64,13 @@ fun RoutineHubSheet(
     modifier: Modifier = Modifier
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val appColors = LocalAppThemeColors.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-        containerColor = Color(0xFF10131A),
+        containerColor = appColors.surface,
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -143,7 +145,7 @@ fun RoutineHubSheet(
                             Icon(
                                 Icons.Default.DateRange,
                                 contentDescription = null,
-                                tint = HyperPrimary,
+                                tint = appColors.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -178,7 +180,7 @@ fun RoutineHubSheet(
                             Icon(
                                 Icons.Default.FlashOn,
                                 contentDescription = null,
-                                tint = HyperEmerald,
+                                tint = if (appColors.isMonochrome) Color.White else HyperEmerald,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -261,7 +263,7 @@ fun RoutineHubSheet(
                                     text = "Apply",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = HyperPrimary
+                                    color = appColors.primary
                                 )
                             }
                         }
@@ -283,7 +285,7 @@ fun RoutineHubSheet(
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = null,
-                    tint = HyperRose,
+                    tint = if (appColors.isMonochrome) Color(0xFFCBD5E1) else HyperRose,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -291,7 +293,7 @@ fun RoutineHubSheet(
                     text = "Clear All Chunks on $dayName",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HyperRose
+                    color = if (appColors.isMonochrome) Color(0xFFCBD5E1) else HyperRose
                 )
             }
         }

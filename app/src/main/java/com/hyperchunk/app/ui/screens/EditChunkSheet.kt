@@ -48,9 +48,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.luminance
 import com.hyperchunk.app.alarm.AlarmScheduler
 import com.hyperchunk.app.data.model.ChunkCategory
+import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.data.model.TimeChunk
+import com.hyperchunk.app.data.model.toMonochromeColor
 import com.hyperchunk.app.ui.components.WheelTimePicker
 import com.hyperchunk.app.ui.theme.HyperAmber
 import com.hyperchunk.app.ui.theme.HyperCoral
@@ -191,10 +194,15 @@ fun EditChunkSheet(
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(ChunkCategory.values()) { cat ->
                         val isSelected = (cat == category)
-                        val catColor = try {
-                            Color(android.graphics.Color.parseColor(cat.defaultColor))
-                        } catch (_: Exception) {
-                            primaryColor
+                        val isMonochrome = (settings.paletteMode == PaletteMode.MONOCHROME)
+                        val catColor = if (isMonochrome) {
+                            cat.toMonochromeColor()
+                        } else {
+                            try {
+                                Color(android.graphics.Color.parseColor(cat.defaultColor))
+                            } catch (_: Exception) {
+                                primaryColor
+                            }
                         }
 
                         Box(
@@ -209,7 +217,7 @@ fun EditChunkSheet(
                                 text = cat.displayName,
                                 fontSize = if (isCompact) 11.sp else 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) Color(0xFF0C0E12) else TextSecondary
+                                color = if (isSelected) (if (isMonochrome) (if (catColor.luminance() > 0.55f) Color.Black else Color.White) else Color(0xFF0C0E12)) else TextSecondary
                             )
                         }
                     }
@@ -306,7 +314,7 @@ fun EditChunkSheet(
                                 text = label,
                                 fontSize = if (isCompact) 11.sp else 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) Color.White else TextSecondary
+                                color = if (isSelected) appColors.onPrimary else TextSecondary
                             )
                         }
                     }
@@ -515,13 +523,16 @@ fun EditChunkSheet(
                             .fillMaxWidth()
                             .height(50.dp),
                         shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryColor,
+                            contentColor = appColors.onPrimary
+                        )
                     ) {
                         Text(
                             text = if (chunkToEdit == null) "Add to Schedule" else "Save Changes",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF0C0E12)
+                            color = appColors.onPrimary
                         )
                     }
 
