@@ -162,7 +162,9 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
 
             try {
                 appWidgetManager.updateAppWidget(appWidgetId, views)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                android.util.Log.e("HyperChunkWidget", "Failed to update widget $appWidgetId", e)
+            }
         }
     }
 }
