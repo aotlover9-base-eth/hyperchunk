@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,10 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hyperchunk.app.ui.theme.HyperCyan
+import com.hyperchunk.app.ui.theme.HyperPrimary
 import com.hyperchunk.app.ui.theme.HyperSurface
-import com.hyperchunk.app.ui.theme.HyperSurfaceElevated
-import com.hyperchunk.app.ui.theme.TextPrimary
 import com.hyperchunk.app.ui.theme.TextTertiary
 
 @Composable
@@ -49,14 +46,14 @@ fun DaySelector(
             val isSelected = (selectedDay == dayNumber)
 
             val bgColor by animateColorAsState(
-                targetValue = if (isSelected) HyperCyan else Color.Transparent,
-                animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f),
+                targetValue = if (isSelected) HyperPrimary else Color.Transparent,
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = 500f),
                 label = "dayBg"
             )
 
             val textColor by animateColorAsState(
-                targetValue = if (isSelected) Color(0xFF0C0E12) else TextTertiary,
-                animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f),
+                targetValue = if (isSelected) Color.White else TextTertiary,
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = 500f),
                 label = "dayText"
             )
 

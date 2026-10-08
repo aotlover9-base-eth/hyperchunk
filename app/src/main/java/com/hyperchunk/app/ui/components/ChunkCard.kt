@@ -8,7 +8,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,10 +40,9 @@ import androidx.compose.ui.unit.sp
 import com.hyperchunk.app.data.model.TimeChunk
 import com.hyperchunk.app.ui.theme.HyperAmber
 import com.hyperchunk.app.ui.theme.HyperBorder
-import com.hyperchunk.app.ui.theme.HyperCyan
-import com.hyperchunk.app.ui.theme.HyperLime
+import com.hyperchunk.app.ui.theme.HyperEmerald
+import com.hyperchunk.app.ui.theme.HyperPrimary
 import com.hyperchunk.app.ui.theme.HyperSurface
-import com.hyperchunk.app.ui.theme.HyperSurfaceElevated
 import com.hyperchunk.app.ui.theme.TextPrimary
 import com.hyperchunk.app.ui.theme.TextSecondary
 import com.hyperchunk.app.ui.theme.TextTertiary
@@ -62,11 +60,11 @@ fun ChunkCard(
     val categoryColor = try {
         Color(android.graphics.Color.parseColor(chunk.colorHex))
     } catch (e: Exception) {
-        HyperCyan
+        HyperPrimary
     }
 
     val borderColor by animateColorAsState(
-        targetValue = if (isActive) HyperCyan.copy(alpha = 0.8f) else HyperBorder,
+        targetValue = if (isActive) categoryColor.copy(alpha = 0.8f) else HyperBorder,
         label = "cardBorder"
     )
 
@@ -86,7 +84,7 @@ fun ChunkCard(
         modifier = modifier.fillMaxWidth(),
         borderColor = borderColor,
         borderWidth = if (isActive) 1.5.dp else 1.dp,
-        backgroundColor = if (isActive) Color(0xFF141922) else HyperSurface,
+        backgroundColor = if (isActive) Color(0xFF141822) else HyperSurface,
         onClick = onCardClick
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -112,7 +110,7 @@ fun ChunkCard(
                         text = "${chunk.startTimeFormatted} – ${chunk.endTimeFormatted}",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isActive) HyperCyan else TextSecondary
+                        color = if (isActive) TextPrimary else TextSecondary
                     )
 
                     Spacer(modifier = Modifier.width(6.dp))
@@ -131,21 +129,21 @@ fun ChunkCard(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(HyperCyan.copy(alpha = 0.15f))
+                                .background(categoryColor.copy(alpha = 0.15f))
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .alpha(pulseAlpha)
-                                    .background(HyperCyan, CircleShape)
+                                    .background(categoryColor, CircleShape)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "NOW",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = HyperCyan
+                                color = categoryColor
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -171,7 +169,7 @@ fun ChunkCard(
             // Title & Notes
             Text(
                 text = chunk.title,
-                fontSize = 18.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
@@ -198,7 +196,7 @@ fun ChunkCard(
                         .fillMaxWidth()
                         .height(5.dp)
                         .clip(RoundedCornerShape(3.dp)),
-                    color = HyperCyan,
+                    color = categoryColor,
                     trackColor = Color(0xFF1E2533)
                 )
 
@@ -217,7 +215,7 @@ fun ChunkCard(
                         text = if (remaining >= 60) "${remaining / 60}h ${remaining % 60}m remaining" else "${remaining}m remaining",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = HyperLime
+                        color = HyperEmerald
                     )
                 }
             }

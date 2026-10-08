@@ -5,6 +5,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,17 +25,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,19 +45,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hyperchunk.app.data.model.ChunkCategory
 import com.hyperchunk.app.data.model.TimeChunk
 import com.hyperchunk.app.data.storage.ChunkRepository
-import com.hyperchunk.app.ui.components.Chunk24hBar
+import com.hyperchunk.app.ui.components.Chunk24hChronograph
 import com.hyperchunk.app.ui.components.ChunkCard
 import com.hyperchunk.app.ui.components.DaySelector
-import com.hyperchunk.app.ui.components.HyperCard
+import com.hyperchunk.app.ui.components.RoutineHubSheet
 import com.hyperchunk.app.ui.theme.HyperBgDark
-import com.hyperchunk.app.ui.theme.HyperCoral
-import com.hyperchunk.app.ui.theme.HyperCyan
-import com.hyperchunk.app.ui.theme.HyperLime
+import com.hyperchunk.app.ui.theme.HyperBorder
+import com.hyperchunk.app.ui.theme.HyperEmerald
+import com.hyperchunk.app.ui.theme.HyperPrimary
 import com.hyperchunk.app.ui.theme.HyperSurface
 import com.hyperchunk.app.ui.theme.HyperSurfaceElevated
+import com.hyperchunk.app.ui.theme.HyperSurfaceVariant
 import com.hyperchunk.app.ui.theme.TextPrimary
 import com.hyperchunk.app.ui.theme.TextSecondary
 import com.hyperchunk.app.ui.theme.TextTertiary
@@ -76,7 +71,8 @@ fun HomeScreen(
     onCancelAlarm: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Current day & time tracker
+    val dayNames = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
     var currentMinuteOfDay by remember {
         val cal = Calendar.getInstance()
         mutableIntStateOf(cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE))
@@ -98,12 +94,12 @@ fun HomeScreen(
 
     var selectedDay by remember { mutableIntStateOf(todayDayOfWeek) }
 
-    // Ticking minute loop
+    // Live clock ticker
     LaunchedEffect(Unit) {
         while (true) {
             val cal = Calendar.getInstance()
             currentMinuteOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-            delay(15000) // check every 15s
+            delay(15000)
         }
     }
 
@@ -114,7 +110,7 @@ fun HomeScreen(
 
     var chunkToEdit by remember { mutableStateOf<TimeChunk?>(null) }
     var showEditSheet by remember { mutableStateOf(false) }
-    var showCopyDialog by remember { mutableStateOf(false) }
+    var showRoutineHubSheet by remember { mutableStateOf(false) }
 
     val activeChunk = remember(dayChunks, currentMinuteOfDay, selectedDay, todayDayOfWeek) {
         if (selectedDay == todayDayOfWeek) {
@@ -131,13 +127,13 @@ fun HomeScreen(
                     chunkToEdit = null
                     showEditSheet = true
                 },
-                containerColor = HyperCyan,
-                contentColor = Color(0xFF0C0E12),
+                containerColor = HyperPrimary,
+                contentColor = Color.White,
                 shape = RoundedCornerShape(22.dp),
                 modifier = Modifier.padding(bottom = 8.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 18.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add")
@@ -156,7 +152,7 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -165,14 +161,14 @@ fun HomeScreen(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(HyperCyan, CircleShape)
+                                .background(HyperPrimary, CircleShape)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "HYPERCHUNK",
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = HyperCyan,
+                            color = HyperPrimary,
                             letterSpacing = 1.2.sp
                         )
                     }
@@ -184,18 +180,30 @@ fun HomeScreen(
                     )
                 }
 
-                IconButton(
-                    onClick = { showCopyDialog = true },
+                // Smart Routine Hub Button
+                Box(
                     modifier = Modifier
-                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(16.dp))
                         .background(HyperSurface)
+                        .border(1.dp, HyperBorder, RoundedCornerShape(16.dp))
+                        .clickable { showRoutineHubSheet = true }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Icon(
-                        Icons.Default.ContentCopy,
-                        contentDescription = "Copy Schedule",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Tune,
+                            contentDescription = "Routines",
+                            tint = HyperPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Routines",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                    }
                 }
             }
 
@@ -209,128 +217,120 @@ fun HomeScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // 1. Hero Active Chunk Card (if viewing today & a chunk is active)
-                if (activeChunk != null) {
-                    item {
-                        HyperCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            backgroundColor = Color(0xFF141A24),
-                            borderColor = HyperCyan,
-                            borderWidth = 1.5.dp
-                        ) {
-                            Column {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "CURRENT ACTIVITY",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = HyperCyan,
-                                        letterSpacing = 1.sp
-                                    )
-                                    val remaining = activeChunk.remainingMinutes(currentMinuteOfDay)
-                                    Text(
-                                        text = if (remaining >= 60) "${remaining / 60}h ${remaining % 60}m left" else "${remaining}m left",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = HyperLime
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                Text(
-                                    text = activeChunk.title,
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = TextPrimary
-                                )
-
-                                Text(
-                                    text = "${activeChunk.startTimeFormatted} – ${activeChunk.endTimeFormatted} (${activeChunk.durationFormatted})",
-                                    fontSize = 13.sp,
-                                    color = TextSecondary
-                                )
-
-                                if (activeChunk.notes.isNotBlank()) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = activeChunk.notes,
-                                        fontSize = 12.sp,
-                                        color = TextTertiary
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 2. 24-Hour Visual Segment Ribbon
+                // 1. Circular 24-Hour Polar Chronograph Dial
                 item {
-                    Chunk24hBar(
+                    Chunk24hChronograph(
                         chunks = dayChunks,
-                        currentMinute = if (selectedDay == todayDayOfWeek) currentMinuteOfDay else 0
+                        currentMinute = if (selectedDay == todayDayOfWeek) currentMinuteOfDay else 0,
+                        activeChunk = activeChunk
                     )
                 }
 
-                // 3. Daily Stats Bar
+                // 2. Chunks Header & Summary
                 item {
-                    val totalChunksCount = dayChunks.size
-                    val totalStudyHours = dayChunks
-                        .filter { it.category == ChunkCategory.STUDY || it.category == ChunkCategory.WORK }
-                        .sumOf { it.durationMinutes } / 60f
-                    val alarmsCount = dayChunks.count { it.hasAlarm }
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(HyperSurface)
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceAround
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("BLOCKS", fontSize = 9.sp, color = TextTertiary, letterSpacing = 0.5.sp)
-                            Text("$totalChunksCount", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("FOCUS", fontSize = 9.sp, color = TextTertiary, letterSpacing = 0.5.sp)
-                            Text(String.format("%.1fh", totalStudyHours), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = HyperCyan)
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("ALARMS", fontSize = 9.sp, color = TextTertiary, letterSpacing = 0.5.sp)
-                            Text("$alarmsCount Active", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = HyperLime)
-                        }
+                        Text(
+                            text = "${dayNames[selectedDay - 1].uppercase()} TIMELINE",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextTertiary,
+                            letterSpacing = 1.2.sp
+                        )
+
+                        Text(
+                            text = "${dayChunks.size} Blocks",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
                     }
                 }
 
-                // 4. Chunk List
+                // 3. Chunk Cards or Quick Fill Empty State
                 if (dayChunks.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 40.dp),
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(HyperSurface)
+                                .border(1.dp, HyperBorder, RoundedCornerShape(24.dp))
+                                .padding(24.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "No Chunks Configured",
+                                    text = "No Chunks on ${dayNames[selectedDay - 1]}",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextSecondary
+                                    color = TextPrimary
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Tap '+ Add Chunk' below to segment this day",
+                                    text = "Start from scratch or load a productivity template",
                                     fontSize = 12.sp,
-                                    color = TextTertiary
+                                    color = TextSecondary
                                 )
+
+                                Spacer(modifier = Modifier.height(18.dp))
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(HyperSurfaceElevated)
+                                            .clickable {
+                                                repository.applyPreset(
+                                                    selectedDay,
+                                                    ChunkRepository.BUILT_IN_PRESETS[0]
+                                                )
+                                                repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach {
+                                                    onScheduleAlarm(it)
+                                                }
+                                            }
+                                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = "⚡ Load 8-8-8",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = HyperPrimary
+                                        )
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(HyperSurfaceElevated)
+                                            .clickable {
+                                                repository.applyPreset(
+                                                    selectedDay,
+                                                    ChunkRepository.BUILT_IN_PRESETS[1]
+                                                )
+                                                repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach {
+                                                    onScheduleAlarm(it)
+                                                }
+                                            }
+                                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = "🎓 Student Grind",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = HyperEmerald
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -341,7 +341,7 @@ fun HomeScreen(
                     ) { chunk ->
                         ChunkCard(
                             chunk = chunk,
-                            currentMinute = if (selectedDay == todayDayOfWeek) currentMinuteOfDay else -1,
+                            currentMinute = currentMinuteOfDay,
                             onCardClick = {
                                 chunkToEdit = chunk
                                 showEditSheet = true
@@ -393,86 +393,31 @@ fun HomeScreen(
         )
     }
 
-    // Copy Schedule Dialog
-    if (showCopyDialog) {
-        val days = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-        var targetDay by remember { mutableIntStateOf(if (selectedDay == 7) 1 else selectedDay + 1) }
-
-        AlertDialog(
-            onDismissRequest = { showCopyDialog = false },
-            title = {
-                Text(
-                    "Duplicate Day Schedule",
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
+    // Smart Routine Hub Sheet
+    if (showRoutineHubSheet) {
+        RoutineHubSheet(
+            selectedDay = selectedDay,
+            dayName = dayNames[selectedDay - 1],
+            onDismiss = { showRoutineHubSheet = false },
+            onSyncToWeekdays = {
+                repository.syncDayToTargets(selectedDay, listOf(1, 2, 3, 4, 5))
+                showRoutineHubSheet = false
             },
-            text = {
-                Column {
-                    Text(
-                        "Copy all chunks from ${days[selectedDay - 1]} to:",
-                        fontSize = 14.sp,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    days.forEachIndexed { idx, name ->
-                        val dNum = idx + 1
-                        if (dNum != selectedDay) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (targetDay == dNum) HyperSurfaceElevated else Color.Transparent)
-                                    .clickable { targetDay = dNum }
-                                    .padding(vertical = 10.dp, horizontal = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(name, color = if (targetDay == dNum) HyperCyan else TextPrimary)
-                                if (targetDay == dNum) {
-                                    Text("Selected", color = HyperCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Button(
-                        onClick = {
-                            dayChunks.forEach { repository.deleteChunk(it.id) }
-                            showCopyDialog = false
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = HyperSurfaceElevated),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            "Clear ${days[selectedDay - 1]} Chunks",
-                            color = HyperCoral,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+            onSyncToWeekend = {
+                repository.syncDayToTargets(selectedDay, listOf(6, 7))
+                showRoutineHubSheet = false
+            },
+            onApplyPreset = { preset ->
+                repository.applyPreset(selectedDay, preset)
+                repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach {
+                    onScheduleAlarm(it)
                 }
+                showRoutineHubSheet = false
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        repository.copySchedule(selectedDay, targetDay)
-                        showCopyDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = HyperCyan),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text("Copy Schedule", color = Color(0xFF0C0E12), fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCopyDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
-                }
-            },
-            containerColor = Color(0xFF181B22),
-            shape = RoundedCornerShape(26.dp)
+            onClearDay = {
+                repository.clearDay(selectedDay)
+                showRoutineHubSheet = false
+            }
         )
     }
 }

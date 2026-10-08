@@ -15,9 +15,10 @@ class AlarmReceiver : BroadcastReceiver() {
         val notes = intent.getStringExtra(EXTRA_NOTES) ?: ""
 
         // 1. Fire heads-up sound & vibration notification
+        val safeId = kotlin.math.abs(chunkId.hashCode()).coerceAtLeast(1)
         NotificationHelper.showChunkNotification(
             context = context,
-            notificationId = chunkId.hashCode(),
+            notificationId = safeId,
             title = title,
             timeSlot = timeSlot,
             notes = notes

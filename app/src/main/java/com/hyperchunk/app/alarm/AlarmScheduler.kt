@@ -5,11 +5,15 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
+import com.hyperchunk.app.MainActivity
 import com.hyperchunk.app.data.model.TimeChunk
 import com.hyperchunk.app.data.storage.ChunkRepository
 import java.util.Calendar
+import java.util.Date
 
 object AlarmScheduler {
+    private const val TAG = "AlarmScheduler"
 
     fun scheduleChunkAlarm(context: Context, chunk: TimeChunk) {
         if (!chunk.hasAlarm) return
@@ -32,24 +36,41 @@ object AlarmScheduler {
         )
 
         val triggerAtMillis = calculateNextTriggerMillis(chunk.dayOfWeek, chunk.startMinuteOfDay)
+        Log.d(TAG, "Scheduling alarm for '${chunk.title}' at triggerAtMillis=$triggerAtMillis (${Date(triggerAtMillis)})")
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
-                    pendingIntent
-                )
-            } else {
-                alarmManager.setExact(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
-                    pendingIntent
-                )
+            // setAlarmClock bypasses Doze and OEM battery killers like HyperOS background optimizers
+            val showIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
-        } catch (e: SecurityException) {
-            // Fallback for strict background permission
-            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            val showPendingIntent = PendingIntent.getActivity(
+                context,
+                requestCode + 1,
+                showIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerAtMillis, showPendingIntent)
+            alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+            Log.d(TAG, "Successfully scheduled via setAlarmClock")
+        } catch (e: Exception) {
+            Log.w(TAG, "setAlarmClock failed, falling back to setExactAndAllowWhileIdle", e)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerAtMillis,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerAtMillis,
+                        pendingIntent
+                    )
+                }
+            } catch (se: SecurityException) {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            }
         }
     }
 
@@ -65,6 +86,7 @@ object AlarmScheduler {
         if (pendingIntent != null) {
             alarmManager.cancel(pendingIntent)
             pendingIntent.cancel()
+            Log.d(TAG, "Cancelled alarm for chunkId=$chunkId")
         }
     }
 
@@ -76,8 +98,10 @@ object AlarmScheduler {
         }
     }
 
-    private fun calculateNextTriggerMillis(dayOfWeek: Int, startMinute: Int): Long {
-        val cal = Calendar.getInstance()
+    fun calculateNextTriggerMillis(dayOfWeek: Int, startMinute: Int): Long {
+        val now = Calendar.getInstance()
+        val target = Calendar.getInstance()
+
         val targetDay = when (dayOfWeek) {
             1 -> Calendar.MONDAY
             2 -> Calendar.TUESDAY
@@ -89,18 +113,18 @@ object AlarmScheduler {
             else -> Calendar.MONDAY
         }
 
-        cal.set(Calendar.HOUR_OF_DAY, startMinute / 60)
-        cal.set(Calendar.MINUTE, startMinute % 60)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
+        target.set(Calendar.HOUR_OF_DAY, startMinute / 60)
+        target.set(Calendar.MINUTE, startMinute % 60)
+        target.set(Calendar.SECOND, 0)
+        target.set(Calendar.MILLISECOND, 0)
 
-        val currentDay = cal.get(Calendar.DAY_OF_WEEK)
+        val currentDay = now.get(Calendar.DAY_OF_WEEK)
         var daysDiff = targetDay - currentDay
-        if (daysDiff < 0 || (daysDiff == 0 && cal.timeInMillis <= System.currentTimeMillis())) {
+        if (daysDiff < 0 || (daysDiff == 0 && target.timeInMillis <= now.timeInMillis)) {
             daysDiff += 7
         }
 
-        cal.add(Calendar.DAY_OF_YEAR, daysDiff)
-        return cal.timeInMillis
+        target.add(Calendar.DAY_OF_YEAR, daysDiff)
+        return target.timeInMillis
     }
 }

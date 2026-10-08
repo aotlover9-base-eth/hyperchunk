@@ -6,14 +6,14 @@ enum class ChunkCategory(
     val displayName: String,
     val defaultColor: String
 ) {
-    SLEEP("Sleep", "#6C5CE7"),
-    ROUTINE("Routine", "#00CEC9"),
-    STUDY("Study / Lecture", "#0984E3"),
-    WORK("Deep Work", "#E17055"),
-    MEAL("Meals & Food", "#FDCB6E"),
-    REST("Rest & Free", "#A29BFE"),
-    FITNESS("Fitness / Gym", "#00B894"),
-    CUSTOM("Custom", "#74B9FF")
+    SLEEP("Sleep", "#6366F1"),
+    ROUTINE("Routine", "#10B981"),
+    STUDY("Study / Lecture", "#3B82F6"),
+    WORK("Deep Work", "#F59E0B"),
+    MEAL("Meals & Food", "#FB923C"),
+    REST("Rest & Free", "#8B5CF6"),
+    FITNESS("Fitness / Gym", "#EF4444"),
+    CUSTOM("Custom", "#06B6D4")
 }
 
 data class TimeChunk(

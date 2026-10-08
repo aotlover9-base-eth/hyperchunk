@@ -1,6 +1,5 @@
 package com.hyperchunk.app.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -9,9 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 
 private val DarkColorScheme = darkColorScheme(
-    primary = HyperCyan,
+    primary = HyperPrimary,
     onPrimary = HyperBgDark,
-    secondary = HyperLime,
+    secondary = HyperEmerald,
     onSecondary = HyperBgDark,
     tertiary = HyperViolet,
     background = HyperBgDark,
@@ -26,8 +25,8 @@ private val DarkColorScheme = darkColorScheme(
 val HyperShapes = Shapes(
     small = RoundedCornerShape(16.dp),
     medium = RoundedCornerShape(24.dp),
-    large = RoundedCornerShape(32.dp),
-    extraLarge = RoundedCornerShape(36.dp)
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
 @Composable

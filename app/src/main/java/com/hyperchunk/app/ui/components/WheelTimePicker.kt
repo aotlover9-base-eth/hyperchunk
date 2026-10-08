@@ -36,10 +36,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hyperchunk.app.ui.theme.HyperCyan
+import com.hyperchunk.app.ui.theme.HyperPrimary
 import com.hyperchunk.app.ui.theme.HyperSurfaceElevated
 import com.hyperchunk.app.ui.theme.TextSecondary
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlin.math.abs
@@ -52,7 +51,7 @@ fun WheelTimePicker(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val feedbackManager = remember { RatchetFeedbackManager(context) }
+    val feedbackManager = remember { SmoothFeedbackManager(context) }
 
     DisposableEffect(feedbackManager) {
         onDispose {
@@ -87,7 +86,7 @@ fun WheelTimePicker(
             text = ":",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = HyperCyan,
+            color = HyperPrimary,
             modifier = Modifier.padding(horizontal = 12.dp)
         )
 
@@ -110,7 +109,7 @@ fun WheelTimePicker(
 private fun WheelColumn(
     count: Int,
     initialValue: Int,
-    feedbackManager: RatchetFeedbackManager,
+    feedbackManager: SmoothFeedbackManager,
     onValueSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -146,7 +145,7 @@ private fun WheelColumn(
         }
     }
 
-    // Mechanical ratchet sound and haptic feedback trigger
+    // Smooth subtle micro-tick and tactile haptic pulse trigger
     LaunchedEffect(listState) {
         var previousRawIndex: Int? = null
 
@@ -166,17 +165,7 @@ private fun WheelColumn(
             .distinctUntilChanged()
             .collect { currentRawIndex ->
                 if (previousRawIndex != null && previousRawIndex != currentRawIndex) {
-                    val delta = abs(currentRawIndex - previousRawIndex!!)
-                    if (delta == 1) {
-                        feedbackManager.playRatchet(view)
-                    } else {
-                        // Multi-tooth jump during fast fling: rapid ratchet rattle burst
-                        val clicks = minOf(delta, 3)
-                        for (i in 0 until clicks) {
-                            feedbackManager.playRatchet(view, pitchVariance = 0.96f + (i * 0.04f))
-                            if (i < clicks - 1) delay(12)
-                        }
-                    }
+                    feedbackManager.playTick(view)
                 }
                 previousRawIndex = currentRawIndex
                 onValueSelected(currentRawIndex % count)
@@ -225,7 +214,7 @@ private fun WheelColumn(
                         text = String.format("%02d", itemValue),
                         fontSize = 24.sp,
                         fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                        color = if (isSelected) HyperCyan else TextSecondary,
+                        color = if (isSelected) HyperPrimary else TextSecondary,
                         modifier = Modifier
                             .scale(scale)
                             .alpha(alpha)

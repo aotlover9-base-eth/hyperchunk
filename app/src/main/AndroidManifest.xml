@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:allowBackup="true"
@@ -30,7 +31,7 @@
         <!-- Alarm & Reminder Broadcast Receiver -->
         <receiver
             android:name=".alarm.AlarmReceiver"
-            android:exported="false" />
+            android:exported="true" />
 
         <!-- Reschedule Alarms after Device Reboot -->
         <receiver

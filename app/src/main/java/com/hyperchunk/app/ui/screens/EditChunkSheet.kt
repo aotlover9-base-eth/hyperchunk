@@ -49,13 +49,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hyperchunk.app.alarm.AlarmScheduler
 import com.hyperchunk.app.data.model.ChunkCategory
 import com.hyperchunk.app.data.model.TimeChunk
 import com.hyperchunk.app.ui.components.WheelTimePicker
 import com.hyperchunk.app.ui.theme.HyperAmber
 import com.hyperchunk.app.ui.theme.HyperBorder
 import com.hyperchunk.app.ui.theme.HyperCoral
-import com.hyperchunk.app.ui.theme.HyperCyan
+import com.hyperchunk.app.ui.theme.HyperEmerald
+import com.hyperchunk.app.ui.theme.HyperPrimary
 import com.hyperchunk.app.ui.theme.HyperSurface
 import com.hyperchunk.app.ui.theme.HyperSurfaceElevated
 import com.hyperchunk.app.ui.theme.HyperSurfaceVariant
@@ -144,7 +146,7 @@ fun EditChunkSheet(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = HyperCyan,
+                    focusedBorderColor = HyperPrimary,
                     unfocusedBorderColor = HyperBorder,
                     focusedContainerColor = HyperSurface,
                     unfocusedContainerColor = HyperSurface,
@@ -165,7 +167,7 @@ fun EditChunkSheet(
                     val catColor = try {
                         Color(android.graphics.Color.parseColor(cat.defaultColor))
                     } catch (e: Exception) {
-                        HyperCyan
+                        HyperPrimary
                     }
 
                     Box(
@@ -215,7 +217,7 @@ fun EditChunkSheet(
                             text = startFormatted,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (activeTimeTab == 0) HyperCyan else TextPrimary
+                            color = if (activeTimeTab == 0) HyperPrimary else TextPrimary
                         )
                     }
                 }
@@ -236,10 +238,46 @@ fun EditChunkSheet(
                             text = endFormatted,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (activeTimeTab == 1) HyperCyan else TextPrimary
+                            color = if (activeTimeTab == 1) HyperPrimary else TextPrimary
                         )
                     }
                 }
+            }
+
+            // Real-Time Dynamic Timing Preview
+            val startTotalMinutes = startHour * 60 + startMinute
+            val triggerMillis = AlarmScheduler.calculateNextTriggerMillis(dayOfWeek, startTotalMinutes)
+            val diffMs = triggerMillis - System.currentTimeMillis()
+            val diffMins = (diffMs / 60000).coerceAtLeast(0)
+            val timingText = when {
+                diffMins < 1 -> "Starts in less than 1 minute"
+                diffMins < 60 -> "Starts in ${diffMins}m"
+                diffMins < 1440 -> "Starts in ${diffMins / 60}h ${diffMins % 60}m"
+                else -> "Starts in ${diffMins / 1440}d ${diffMins / 60 % 24}h"
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(HyperSurfaceVariant)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(HyperEmerald, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = timingText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = HyperEmerald
+                )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -312,7 +350,7 @@ fun EditChunkSheet(
                     checked = hasAlarm,
                     onCheckedChange = { hasAlarm = it },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = HyperCyan,
+                        checkedThumbColor = HyperPrimary,
                         checkedTrackColor = HyperSurfaceElevated,
                         uncheckedThumbColor = TextTertiary,
                         uncheckedTrackColor = HyperSurfaceVariant
@@ -332,7 +370,7 @@ fun EditChunkSheet(
                 shape = RoundedCornerShape(20.dp),
                 maxLines = 3,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = HyperCyan,
+                    focusedBorderColor = HyperPrimary,
                     unfocusedBorderColor = HyperBorder,
                     focusedContainerColor = HyperSurface,
                     unfocusedContainerColor = HyperSurface,
@@ -367,7 +405,7 @@ fun EditChunkSheet(
                     .fillMaxWidth()
                     .height(54.dp),
                 shape = RoundedCornerShape(22.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = HyperCyan)
+                colors = ButtonDefaults.buttonColors(containerColor = HyperPrimary)
             ) {
                 Text(
                     text = if (chunkToEdit == null) "Add to Schedule" else "Save Changes",
