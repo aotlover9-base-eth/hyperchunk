@@ -144,7 +144,7 @@ fun SettingsSheet(
 
             val currentScale = settings.fontScale
             val scaleLabel = when {
-                currentScale <= 0.85f -> "Compact (Pixel 9a)"
+                currentScale <= 0.85f -> "Compact Mode"
                 currentScale <= 0.95f -> "Small"
                 currentScale <= 1.05f -> "Default (1.00x)"
                 currentScale <= 1.15f -> "Large"
@@ -239,7 +239,7 @@ fun SettingsSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // 2. Compact Screen Optimization Toggle (Pixel 9a)
+            // 2. Screen Optimisation Mode Toggle
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -265,13 +265,13 @@ fun SettingsSheet(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Compact Screen Optimization",
+                                text = "Screen Optimisation Mode",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
                             Text(
-                                text = "Optimizes dial height & spacing for Pixel 9a",
+                                text = "Optimizes dial height & spacing for compact displays",
                                 fontSize = 11.sp,
                                 color = TextSecondary
                             )

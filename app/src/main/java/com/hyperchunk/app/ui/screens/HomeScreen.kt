@@ -262,7 +262,8 @@ fun HomeScreen(
                     Chunk24hChronograph(
                         chunks = dayChunks,
                         currentMinute = if (selectedDay == todayDayOfWeek) currentMinuteOfDay else 0,
-                        activeChunk = activeChunk
+                        activeChunk = activeChunk,
+                        compactMode = settings.compactMode
                     )
                 }
 
