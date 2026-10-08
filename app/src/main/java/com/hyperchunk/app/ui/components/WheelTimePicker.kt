@@ -6,10 +6,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.SnapPositionInLayout
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,13 +27,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +57,7 @@ fun WheelTimePicker(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val feedbackManager = remember { SmoothFeedbackManager(context) }
 
     DisposableEffect(feedbackManager) {
@@ -59,8 +66,21 @@ fun WheelTimePicker(
         }
     }
 
-    var selectedHour by remember { mutableIntStateOf(initialHour) }
-    var selectedMinute by remember { mutableIntStateOf(initialMinute) }
+    var isAm by remember(initialHour) { mutableStateOf(initialHour < 12) }
+    val derivedHour12 = when (val h = initialHour % 12) {
+        0 -> 12
+        else -> h
+    }
+    var selectedHour12 by remember(initialHour) { mutableIntStateOf(derivedHour12) }
+    var selectedMinute by remember(initialMinute) { mutableIntStateOf(initialMinute) }
+
+    fun to24Hour(hour12: Int, am: Boolean): Int {
+        return if (am) {
+            if (hour12 == 12) 0 else hour12
+        } else {
+            if (hour12 == 12) 12 else hour12 + 12
+        }
+    }
 
     Row(
         modifier = modifier
@@ -69,38 +89,105 @@ fun WheelTimePicker(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Hours Wheel
+        // 12-Hour Hours Wheel (01..12)
         WheelColumn(
-            count = 24,
-            initialValue = initialHour,
+            count = 12,
+            initialValue = selectedHour12 - 1,
+            labelFormatter = { String.format("%02d", it + 1) },
             feedbackManager = feedbackManager,
-            onValueSelected = { newHour ->
-                selectedHour = newHour
-                onTimeChanged(newHour, selectedMinute)
+            onValueSelected = { newHourIndex ->
+                selectedHour12 = newHourIndex + 1
+                val h24 = to24Hour(selectedHour12, isAm)
+                onTimeChanged(h24, selectedMinute)
             },
-            modifier = Modifier.width(90.dp)
+            modifier = Modifier.width(78.dp)
         )
 
         // Colon separator
         Text(
             text = ":",
-            fontSize = 32.sp,
+            fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
             color = HyperPrimary,
-            modifier = Modifier.padding(horizontal = 12.dp)
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
 
-        // Minutes Wheel
+        // Minutes Wheel (00..59)
         WheelColumn(
             count = 60,
-            initialValue = initialMinute,
+            initialValue = selectedMinute,
+            labelFormatter = { String.format("%02d", it) },
             feedbackManager = feedbackManager,
             onValueSelected = { newMinute ->
                 selectedMinute = newMinute
-                onTimeChanged(selectedHour, newMinute)
+                val h24 = to24Hour(selectedHour12, isAm)
+                onTimeChanged(h24, newMinute)
             },
-            modifier = Modifier.width(90.dp)
+            modifier = Modifier.width(78.dp)
         )
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        // AM / PM Segmented Capsule Column
+        Column(
+            modifier = Modifier
+                .width(62.dp)
+                .height(104.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(HyperSurfaceElevated)
+                .padding(3.dp),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            // AM Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(if (isAm) HyperPrimary else androidx.compose.ui.graphics.Color.Transparent)
+                    .clickable {
+                        if (!isAm) {
+                            isAm = true
+                            feedbackManager.playTick(view)
+                            val h24 = to24Hour(selectedHour12, true)
+                            onTimeChanged(h24, selectedMinute)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "AM",
+                    fontSize = 13.sp,
+                    fontWeight = if (isAm) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    color = if (isAm) androidx.compose.ui.graphics.Color.White else TextSecondary
+                )
+            }
+
+            // PM Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(if (!isAm) HyperPrimary else androidx.compose.ui.graphics.Color.Transparent)
+                    .clickable {
+                        if (isAm) {
+                            isAm = false
+                            feedbackManager.playTick(view)
+                            val h24 = to24Hour(selectedHour12, false)
+                            onTimeChanged(h24, selectedMinute)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "PM",
+                    fontSize = 13.sp,
+                    fontWeight = if (!isAm) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    color = if (!isAm) androidx.compose.ui.graphics.Color.White else TextSecondary
+                )
+            }
+        }
     }
 }
 
@@ -111,6 +198,7 @@ private fun WheelColumn(
     initialValue: Int,
     feedbackManager: SmoothFeedbackManager,
     onValueSelected: (Int) -> Unit,
+    labelFormatter: (Int) -> String = { String.format("%02d", it) },
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -122,6 +210,24 @@ private fun WheelColumn(
     val startIndex = (totalRepeat / 2) * count + initialValue
 
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
+
+    // Synchronize programmatic changes (e.g. quick duration buttons 1h, 2h, 3h)
+    LaunchedEffect(initialValue) {
+        val layoutInfo = listState.layoutInfo
+        val visibleItems = layoutInfo.visibleItemsInfo
+        if (visibleItems.isNotEmpty()) {
+            val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+            val closest = visibleItems.minByOrNull { item ->
+                val itemCenter = item.offset + item.size / 2
+                abs(itemCenter - viewportCenter)
+            }
+            val currentSelected = (closest?.index ?: listState.firstVisibleItemIndex) % count
+            if (currentSelected != initialValue) {
+                val currentLoop = (listState.firstVisibleItemIndex / count).coerceAtLeast(1)
+                listState.animateScrollToItem(currentLoop * count + initialValue)
+            }
+        }
+    }
     val snapLayoutInfoProvider = remember(listState) {
         SnapLayoutInfoProvider(
             lazyListState = listState,
@@ -211,7 +317,7 @@ private fun WheelColumn(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = String.format("%02d", itemValue),
+                        text = labelFormatter(itemValue),
                         fontSize = 24.sp,
                         fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
                         color = if (isSelected) HyperPrimary else TextSecondary,

@@ -41,6 +41,27 @@ data class TimeChunk(
             return String.format("%02d:%02d", h, m)
         }
 
+    val startTime12h: String
+        get() {
+            val h = (startMinuteOfDay / 60) % 24
+            val m = startMinuteOfDay % 60
+            val hour12 = if (h % 12 == 0) 12 else (h % 12)
+            val amPm = if (h < 12) "AM" else "PM"
+            return String.format("%d:%02d %s", hour12, m, amPm)
+        }
+
+    val endTime12h: String
+        get() {
+            val h = (endMinuteOfDay / 60) % 24
+            val m = endMinuteOfDay % 60
+            val hour12 = if (h % 12 == 0) 12 else (h % 12)
+            val amPm = if (h < 12) "AM" else "PM"
+            return String.format("%d:%02d %s", hour12, m, amPm)
+        }
+
+    val timeRange12h: String
+        get() = "$startTime12h – $endTime12h"
+
     val durationMinutes: Int
         get() = if (endMinuteOfDay >= startMinuteOfDay) {
             endMinuteOfDay - startMinuteOfDay

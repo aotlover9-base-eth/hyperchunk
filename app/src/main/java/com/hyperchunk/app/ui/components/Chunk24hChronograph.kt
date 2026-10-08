@@ -61,7 +61,9 @@ fun Chunk24hChronograph(
 ) {
     val currentH = currentMinute / 60
     val currentM = currentMinute % 60
-    val formattedNow = String.format("%02d:%02d", currentH, currentM)
+    val hour12 = if (currentH % 12 == 0) 12 else (currentH % 12)
+    val amPm = if (currentH < 12) "AM" else "PM"
+    val formattedNow = String.format("%d:%02d %s", hour12, currentM, amPm)
 
     // Pulsing aura animation for current time needle
     val infiniteTransition = rememberInfiniteTransition(label = "needlePulse")
@@ -217,7 +219,7 @@ fun Chunk24hChronograph(
             ) {
                 Text(
                     text = formattedNow,
-                    fontSize = 28.sp,
+                    fontSize = 25.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = TextPrimary,
                     letterSpacing = 0.5.sp
@@ -274,9 +276,9 @@ fun Chunk24hChronograph(
                 .padding(horizontal = 24.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("00:00 Night", fontSize = 10.sp, color = TextTertiary)
-            Text("12:00 Midday", fontSize = 10.sp, color = TextTertiary)
-            Text("24:00 End", fontSize = 10.sp, color = TextTertiary)
+            Text("12:00 AM Night", fontSize = 10.sp, color = TextTertiary)
+            Text("12:00 PM Midday", fontSize = 10.sp, color = TextTertiary)
+            Text("12:00 AM End", fontSize = 10.sp, color = TextTertiary)
         }
     }
 }

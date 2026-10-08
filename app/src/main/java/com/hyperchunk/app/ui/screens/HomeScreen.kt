@@ -366,15 +366,52 @@ fun HomeScreen(
         }
     }
 
+    var lastAddedEndMinute by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(selectedDay) {
+        lastAddedEndMinute = null
+    }
+
+    // Continuous scheduling: default start time to previous chunk's end time
+    val continuousStartMinute = remember(dayChunks, lastAddedEndMinute, currentMinuteOfDay) {
+        lastAddedEndMinute?.let { if (it in 0..1439) it else null } ?: run {
+            if (dayChunks.isNotEmpty()) {
+                val maxEnd = dayChunks.maxOf { it.endMinuteOfDay }
+                if (maxEnd in 1..1439) {
+                    maxEnd
+                } else {
+                    // If scheduled up to 24:00, look for any open gap in the day
+                    val sorted = dayChunks.sortedBy { it.startMinuteOfDay }
+                    var gapStart: Int? = null
+                    if (sorted.first().startMinuteOfDay > 0) {
+                        gapStart = 0
+                    } else {
+                        for (i in 0 until sorted.size - 1) {
+                            if (sorted[i].endMinuteOfDay < sorted[i + 1].startMinuteOfDay) {
+                                gapStart = sorted[i].endMinuteOfDay
+                                break
+                            }
+                        }
+                    }
+                    gapStart ?: (9 * 60)
+                }
+            } else {
+                ((currentMinuteOfDay / 30 + 1) * 30).coerceIn(0, 23 * 60)
+            }
+        }
+    }
+
     // Modal Edit Sheet
     if (showEditSheet) {
         EditChunkSheet(
             chunkToEdit = chunkToEdit,
             dayOfWeek = selectedDay,
+            defaultStartMinute = continuousStartMinute,
             onDismiss = { showEditSheet = false },
             onSave = { savedChunk ->
                 if (chunkToEdit == null) {
                     repository.addChunk(savedChunk)
+                    lastAddedEndMinute = savedChunk.endMinuteOfDay % 1440
                 } else {
                     repository.updateChunk(savedChunk)
                 }

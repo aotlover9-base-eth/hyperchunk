@@ -81,7 +81,7 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_task_title, activeChunk.title)
                 views.setTextViewText(
                     R.id.widget_task_time,
-                    "${activeChunk.startTimeFormatted} – ${activeChunk.endTimeFormatted}"
+                    "${activeChunk.startTime12h} – ${activeChunk.endTime12h}"
                 )
                 val remaining = activeChunk.remainingMinutes(currentMinute)
                 val remainingStr = if (remaining >= 60) {
@@ -105,7 +105,7 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             if (nextChunk != null) {
                 views.setTextViewText(
                     R.id.widget_next_task,
-                    "Next: ${nextChunk.title} (${nextChunk.startTimeFormatted})"
+                    "Next: ${nextChunk.title} (${nextChunk.startTime12h})"
                 )
             } else {
                 views.setTextViewText(R.id.widget_next_task, "No more chunks scheduled today")

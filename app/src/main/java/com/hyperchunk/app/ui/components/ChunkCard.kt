@@ -107,7 +107,7 @@ fun ChunkCard(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Text(
-                        text = "${chunk.startTimeFormatted} – ${chunk.endTimeFormatted}",
+                        text = chunk.timeRange12h,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isActive) TextPrimary else TextSecondary

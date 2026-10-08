@@ -22,7 +22,7 @@ object AlarmScheduler {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra(AlarmReceiver.EXTRA_CHUNK_ID, chunk.id)
             putExtra(AlarmReceiver.EXTRA_TITLE, chunk.title)
-            putExtra(AlarmReceiver.EXTRA_TIME, "${chunk.startTimeFormatted} - ${chunk.endTimeFormatted}")
+            putExtra(AlarmReceiver.EXTRA_TIME, "${chunk.startTime12h} – ${chunk.endTime12h}")
             putExtra(AlarmReceiver.EXTRA_NOTES, chunk.notes)
             putExtra(AlarmReceiver.EXTRA_DAY, chunk.dayOfWeek)
         }

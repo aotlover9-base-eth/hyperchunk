@@ -70,6 +70,7 @@ import com.hyperchunk.app.ui.theme.TextTertiary
 fun EditChunkSheet(
     chunkToEdit: TimeChunk?,
     dayOfWeek: Int,
+    defaultStartMinute: Int = 9 * 60,
     onDismiss: () -> Unit,
     onSave: (TimeChunk) -> Unit,
     onDelete: ((String) -> Unit)? = null
@@ -81,17 +82,32 @@ fun EditChunkSheet(
     var notes by remember { mutableStateOf(chunkToEdit?.notes ?: "") }
     var hasAlarm by remember { mutableStateOf(chunkToEdit?.hasAlarm ?: true) }
 
-    val initialStartMin = chunkToEdit?.startMinuteOfDay ?: (9 * 60)
-    val initialEndMin = chunkToEdit?.endMinuteOfDay ?: (11 * 60)
+    val initialStartMin = chunkToEdit?.startMinuteOfDay ?: defaultStartMinute
+    val initialEndMin = chunkToEdit?.endMinuteOfDay ?: ((initialStartMin + 60) % 1440)
 
-    var startHour by remember { mutableIntStateOf(initialStartMin / 60) }
-    var startMinute by remember { mutableIntStateOf(initialStartMin % 60) }
+    var startHour by remember(chunkToEdit, defaultStartMinute) { mutableIntStateOf(initialStartMin / 60) }
+    var startMinute by remember(chunkToEdit, defaultStartMinute) { mutableIntStateOf(initialStartMin % 60) }
 
-    var endHour by remember { mutableIntStateOf(initialEndMin / 60) }
-    var endMinute by remember { mutableIntStateOf(initialEndMin % 60) }
+    var endHour by remember(chunkToEdit, defaultStartMinute) { mutableIntStateOf(initialEndMin / 60) }
+    var endMinute by remember(chunkToEdit, defaultStartMinute) { mutableIntStateOf(initialEndMin % 60) }
+
+    // Selected duration preset in minutes: 30, 60, 120, 180, or null (custom)
+    var selectedDurationPreset by remember(chunkToEdit, defaultStartMinute) {
+        val diff = if (initialEndMin >= initialStartMin) (initialEndMin - initialStartMin) else (1440 - initialStartMin + initialEndMin)
+        mutableStateOf<Int?>(if (diff in listOf(30, 60, 120, 180)) diff else if (chunkToEdit == null) 60 else null)
+    }
 
     // 0 = Edit Start Time, 1 = Edit End Time
     var activeTimeTab by remember { mutableIntStateOf(0) }
+
+    fun formatTime12h(h24: Int, m: Int): String {
+        val hour12 = when (val h = h24 % 12) {
+            0 -> 12
+            else -> h
+        }
+        val amPm = if (h24 < 12) "AM" else "PM"
+        return String.format("%d:%02d %s", hour12, m, amPm)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -198,8 +214,8 @@ fun EditChunkSheet(
                     .background(HyperSurface)
                     .padding(4.dp)
             ) {
-                val startFormatted = String.format("%02d:%02d", startHour, startMinute)
-                val endFormatted = String.format("%02d:%02d", endHour, endMinute)
+                val startFormatted = formatTime12h(startHour, startMinute)
+                val endFormatted = formatTime12h(endHour, endMinute)
 
                 // Start Time Tab
                 Box(
@@ -215,7 +231,7 @@ fun EditChunkSheet(
                         Text("STARTS AT", fontSize = 10.sp, color = TextTertiary)
                         Text(
                             text = startFormatted,
-                            fontSize = 20.sp,
+                            fontSize = 19.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (activeTimeTab == 0) HyperPrimary else TextPrimary
                         )
@@ -236,11 +252,74 @@ fun EditChunkSheet(
                         Text("ENDS AT", fontSize = 10.sp, color = TextTertiary)
                         Text(
                             text = endFormatted,
-                            fontSize = 20.sp,
+                            fontSize = 19.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (activeTimeTab == 1) HyperPrimary else TextPrimary
                         )
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Quick Duration Preset Buttons: 30m, 1 hr, 2 hr, 3 hr, Edit
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val presets = listOf(
+                    30 to "30m",
+                    60 to "1 hr",
+                    120 to "2 hr",
+                    180 to "3 hr"
+                )
+
+                presets.forEach { (durationMins, label) ->
+                    val isSelected = (selectedDurationPreset == durationMins)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (isSelected) HyperPrimary else HyperSurface)
+                            .clickable {
+                                selectedDurationPreset = durationMins
+                                val newEndTotal = (startHour * 60 + startMinute + durationMins) % 1440
+                                endHour = newEndTotal / 60
+                                endMinute = newEndTotal % 60
+                            }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) Color.White else TextSecondary
+                        )
+                    }
+                }
+
+                // "Edit End" button to manually scroll the end clock
+                val isCustom = (selectedDurationPreset == null)
+                Box(
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (isCustom && activeTimeTab == 1) HyperSurfaceElevated else HyperSurface)
+                        .clickable {
+                            selectedDurationPreset = null
+                            activeTimeTab = 1
+                        }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Edit End",
+                        fontSize = 12.sp,
+                        fontWeight = if (isCustom && activeTimeTab == 1) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isCustom && activeTimeTab == 1) HyperPrimary else TextSecondary
+                    )
                 }
             }
 
@@ -297,6 +376,11 @@ fun EditChunkSheet(
                         onTimeChanged = { h, m ->
                             startHour = h
                             startMinute = m
+                            selectedDurationPreset?.let { durationMins ->
+                                val newEndTotal = (h * 60 + m + durationMins) % 1440
+                                endHour = newEndTotal / 60
+                                endMinute = newEndTotal % 60
+                            }
                         }
                     )
                 } else {
@@ -306,6 +390,8 @@ fun EditChunkSheet(
                         onTimeChanged = { h, m ->
                             endHour = h
                             endMinute = m
+                            val curDuration = (h * 60 + m) - (startHour * 60 + startMinute)
+                            selectedDurationPreset = if (curDuration in listOf(30, 60, 120, 180)) curDuration else null
                         }
                     )
                 }
