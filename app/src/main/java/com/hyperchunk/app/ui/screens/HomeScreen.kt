@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -48,17 +49,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hyperchunk.app.data.model.TimeChunk
 import com.hyperchunk.app.data.storage.ChunkRepository
+import com.hyperchunk.app.data.storage.SettingsRepository
 import com.hyperchunk.app.ui.components.Chunk24hChronograph
 import com.hyperchunk.app.ui.components.ChunkCard
 import com.hyperchunk.app.ui.components.DaySelector
 import com.hyperchunk.app.ui.components.RoutineHubSheet
-import com.hyperchunk.app.ui.theme.HyperBgDark
+import com.hyperchunk.app.ui.components.SettingsSheet
 import com.hyperchunk.app.ui.theme.HyperBorder
 import com.hyperchunk.app.ui.theme.HyperEmerald
 import com.hyperchunk.app.ui.theme.HyperPrimary
 import com.hyperchunk.app.ui.theme.HyperSurface
 import com.hyperchunk.app.ui.theme.HyperSurfaceElevated
 import com.hyperchunk.app.ui.theme.HyperSurfaceVariant
+import com.hyperchunk.app.ui.theme.LocalAppThemeColors
+import com.hyperchunk.app.ui.theme.LocalAppSettings
 import com.hyperchunk.app.ui.theme.TextPrimary
 import com.hyperchunk.app.ui.theme.TextSecondary
 import com.hyperchunk.app.ui.theme.TextTertiary
@@ -68,6 +72,7 @@ import java.util.Calendar
 @Composable
 fun HomeScreen(
     repository: ChunkRepository,
+    settingsRepository: SettingsRepository,
     onScheduleAlarm: (TimeChunk) -> Unit,
     onCancelAlarm: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -116,6 +121,10 @@ fun HomeScreen(
     var chunkToEdit by remember { mutableStateOf<TimeChunk?>(null) }
     var showEditSheet by remember { mutableStateOf(false) }
     var showRoutineHubSheet by remember { mutableStateOf(false) }
+    var showSettingsSheet by remember { mutableStateOf(false) }
+
+    val appColors = LocalAppThemeColors.current
+    val settings by settingsRepository.settings.collectAsState()
 
     val activeChunk = remember(dayChunks, currentMinuteOfDay, selectedDay, todayDayOfWeek) {
         if (selectedDay == todayDayOfWeek) {
@@ -125,14 +134,14 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = HyperBgDark,
+        containerColor = appColors.bgDark,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
                     chunkToEdit = null
                     showEditSheet = true
                 },
-                containerColor = HyperPrimary,
+                containerColor = appColors.primary,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(22.dp),
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -166,14 +175,14 @@ fun HomeScreen(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(HyperPrimary, CircleShape)
+                                .background(appColors.primary, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "HYPERCHUNK",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = HyperPrimary,
+                            color = appColors.primary,
                             letterSpacing = 1.2.sp
                         )
                     }
@@ -185,28 +194,52 @@ fun HomeScreen(
                     )
                 }
 
-                // Smart Routine Hub Button
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(HyperSurface)
-                        .border(1.dp, HyperBorder, RoundedCornerShape(16.dp))
-                        .clickable { showRoutineHubSheet = true }
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                // Action Buttons Row (Routines & Settings)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Smart Routine Hub Button
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(appColors.surface)
+                            .border(1.dp, appColors.border, RoundedCornerShape(16.dp))
+                            .clickable { showRoutineHubSheet = true }
+                            .padding(horizontal = 11.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Tune,
+                                contentDescription = "Routines",
+                                tint = appColors.primary,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = "Routines",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        }
+                    }
+
+                    // Settings Button
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(appColors.surface)
+                            .border(1.dp, appColors.border, RoundedCornerShape(16.dp))
+                            .clickable { showSettingsSheet = true },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
-                            Icons.Default.Tune,
-                            contentDescription = "Routines",
-                            tint = HyperPrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Routines",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = appColors.primary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -466,6 +499,22 @@ fun HomeScreen(
                 repository.clearDay(selectedDay)
                 showRoutineHubSheet = false
             }
+        )
+    }
+
+    // Appearance & Settings Sheet
+    if (showSettingsSheet) {
+        SettingsSheet(
+            settings = settings,
+            onFontScaleChanged = { settingsRepository.updateFontScale(it) },
+            onCompactModeChanged = { settingsRepository.updateCompactMode(it) },
+            onAccentThemeChanged = { settingsRepository.updateAccentTheme(it) },
+            onBackgroundThemeChanged = { settingsRepository.updateBackgroundTheme(it) },
+            onHapticModeChanged = { settingsRepository.updateHapticMode(it) },
+            on24HourFormatChanged = { settingsRepository.update24HourFormat(it) },
+            onDefaultAlarmChanged = { settingsRepository.updateDefaultSoundAlarm(it) },
+            onResetDefaults = { settingsRepository.resetToDefaults() },
+            onDismiss = { showSettingsSheet = false }
         )
     }
 }

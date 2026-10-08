@@ -43,6 +43,8 @@ import com.hyperchunk.app.ui.theme.HyperBorder
 import com.hyperchunk.app.ui.theme.HyperEmerald
 import com.hyperchunk.app.ui.theme.HyperPrimary
 import com.hyperchunk.app.ui.theme.HyperSurface
+import com.hyperchunk.app.ui.theme.LocalAppSettings
+import com.hyperchunk.app.ui.theme.LocalAppThemeColors
 import com.hyperchunk.app.ui.theme.TextPrimary
 import com.hyperchunk.app.ui.theme.TextSecondary
 import com.hyperchunk.app.ui.theme.TextTertiary
@@ -56,15 +58,17 @@ fun ChunkCard(
     modifier: Modifier = Modifier
 ) {
     val isActive = chunk.isCurrentlyActive(currentMinute)
+    val appColors = LocalAppThemeColors.current
+    val settings = LocalAppSettings.current
 
     val categoryColor = try {
         Color(android.graphics.Color.parseColor(chunk.colorHex))
     } catch (e: Exception) {
-        HyperPrimary
+        appColors.primary
     }
 
     val borderColor by animateColorAsState(
-        targetValue = if (isActive) categoryColor.copy(alpha = 0.8f) else HyperBorder,
+        targetValue = if (isActive) categoryColor.copy(alpha = 0.8f) else appColors.border,
         label = "cardBorder"
     )
 
@@ -84,7 +88,7 @@ fun ChunkCard(
         modifier = modifier.fillMaxWidth(),
         borderColor = borderColor,
         borderWidth = if (isActive) 1.5.dp else 1.dp,
-        backgroundColor = if (isActive) Color(0xFF141822) else HyperSurface,
+        backgroundColor = if (isActive) appColors.surfaceElevated else appColors.surface,
         onClick = onCardClick
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -107,7 +111,7 @@ fun ChunkCard(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Text(
-                        text = chunk.timeRange12h,
+                        text = if (settings.use24HourFormat) chunk.timeRange24h else chunk.timeRange12h,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isActive) TextPrimary else TextSecondary

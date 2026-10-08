@@ -62,6 +62,9 @@ data class TimeChunk(
     val timeRange12h: String
         get() = "$startTime12h – $endTime12h"
 
+    val timeRange24h: String
+        get() = "$startTimeFormatted – $endTimeFormatted"
+
     val durationMinutes: Int
         get() = if (endMinuteOfDay >= startMinuteOfDay) {
             endMinuteOfDay - startMinuteOfDay

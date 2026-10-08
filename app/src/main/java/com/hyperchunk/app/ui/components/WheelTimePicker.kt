@@ -3,10 +3,10 @@ package com.hyperchunk.app.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.SnapPositionInLayout
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -38,10 +39,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hyperchunk.app.ui.theme.HyperPrimary
+import com.hyperchunk.app.data.model.HapticMode
 import com.hyperchunk.app.ui.theme.HyperSurfaceElevated
+import com.hyperchunk.app.ui.theme.LocalAppSettings
+import com.hyperchunk.app.ui.theme.LocalAppThemeColors
 import com.hyperchunk.app.ui.theme.TextSecondary
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -52,11 +56,15 @@ fun WheelTimePicker(
     initialHour: Int,
     initialMinute: Int,
     onTimeChanged: (hour: Int, minute: Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val feedbackManager = remember { SmoothFeedbackManager(context) }
+    val settings = LocalAppSettings.current
+    val isHapticsEnabled = settings.hapticMode != HapticMode.OFF
+    val primaryColor = LocalAppThemeColors.current.primary
 
     DisposableEffect(feedbackManager) {
         onDispose {
@@ -72,10 +80,16 @@ fun WheelTimePicker(
 
     val currentOnTimeChanged by rememberUpdatedState(onTimeChanged)
 
+    val rowHeight = if (compact) 138.dp else 180.dp
+    val colWidth = if (compact) 68.dp else 78.dp
+    val capsuleWidth = if (compact) 54.dp else 62.dp
+    val capsuleHeight = if (compact) 88.dp else 104.dp
+    val separatorSize = if (compact) 24.sp else 30.sp
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(180.dp),
+            .height(rowHeight),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -85,6 +99,8 @@ fun WheelTimePicker(
             initialValue = hour12 - 1,
             labelFormatter = { String.format("%02d", it + 1) },
             feedbackManager = feedbackManager,
+            isHapticsEnabled = isHapticsEnabled,
+            compact = compact,
             onValueSelected = { newHourIndex ->
                 val newHour12 = newHourIndex + 1
                 val newH24 = if (isAm) {
@@ -94,16 +110,16 @@ fun WheelTimePicker(
                 }
                 currentOnTimeChanged(newH24, initialMinute)
             },
-            modifier = Modifier.width(78.dp)
+            modifier = Modifier.width(colWidth)
         )
 
         // Colon separator
         Text(
             text = ":",
-            fontSize = 30.sp,
+            fontSize = separatorSize,
             fontWeight = FontWeight.Bold,
-            color = HyperPrimary,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            color = primaryColor,
+            modifier = Modifier.padding(horizontal = if (compact) 4.dp else 8.dp)
         )
 
         // Minutes Wheel (00..59)
@@ -112,20 +128,22 @@ fun WheelTimePicker(
             initialValue = initialMinute,
             labelFormatter = { String.format("%02d", it) },
             feedbackManager = feedbackManager,
+            isHapticsEnabled = isHapticsEnabled,
+            compact = compact,
             onValueSelected = { newMinute ->
                 currentOnTimeChanged(initialHour, newMinute)
             },
-            modifier = Modifier.width(78.dp)
+            modifier = Modifier.width(colWidth)
         )
 
-        Spacer(modifier = Modifier.width(14.dp))
+        Spacer(modifier = Modifier.width(if (compact) 10.dp else 14.dp))
 
         // AM / PM Segmented Capsule Column
         Column(
             modifier = Modifier
-                .width(62.dp)
-                .height(104.dp)
-                .clip(RoundedCornerShape(18.dp))
+                .width(capsuleWidth)
+                .height(capsuleHeight)
+                .clip(RoundedCornerShape(if (compact) 14.dp else 18.dp))
                 .background(HyperSurfaceElevated)
                 .padding(3.dp),
             verticalArrangement = Arrangement.SpaceEvenly
@@ -135,11 +153,11 @@ fun WheelTimePicker(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .clip(RoundedCornerShape(15.dp))
-                    .background(if (isAm) HyperPrimary else Color.Transparent)
+                    .clip(RoundedCornerShape(if (compact) 12.dp else 15.dp))
+                    .background(if (isAm) primaryColor else Color.Transparent)
                     .clickable {
                         if (!isAm) {
-                            feedbackManager.playTick(view)
+                            if (isHapticsEnabled) feedbackManager.playTick(view)
                             val newH24 = if (initialHour >= 12) initialHour - 12 else initialHour
                             currentOnTimeChanged(newH24, initialMinute)
                         }
@@ -148,7 +166,7 @@ fun WheelTimePicker(
             ) {
                 Text(
                     text = "AM",
-                    fontSize = 13.sp,
+                    fontSize = if (compact) 12.sp else 13.sp,
                     fontWeight = if (isAm) FontWeight.ExtraBold else FontWeight.SemiBold,
                     color = if (isAm) Color.White else TextSecondary
                 )
@@ -159,11 +177,11 @@ fun WheelTimePicker(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .clip(RoundedCornerShape(15.dp))
-                    .background(if (!isAm) HyperPrimary else Color.Transparent)
+                    .clip(RoundedCornerShape(if (compact) 12.dp else 15.dp))
+                    .background(if (!isAm) primaryColor else Color.Transparent)
                     .clickable {
                         if (isAm) {
-                            feedbackManager.playTick(view)
+                            if (isHapticsEnabled) feedbackManager.playTick(view)
                             val newH24 = if (initialHour < 12) initialHour + 12 else initialHour
                             currentOnTimeChanged(newH24, initialMinute)
                         }
@@ -172,7 +190,7 @@ fun WheelTimePicker(
             ) {
                 Text(
                     text = "PM",
-                    fontSize = 13.sp,
+                    fontSize = if (compact) 12.sp else 13.sp,
                     fontWeight = if (!isAm) FontWeight.ExtraBold else FontWeight.SemiBold,
                     color = if (!isAm) Color.White else TextSecondary
                 )
@@ -187,14 +205,18 @@ private fun WheelColumn(
     count: Int,
     initialValue: Int,
     feedbackManager: SmoothFeedbackManager,
+    isHapticsEnabled: Boolean,
+    compact: Boolean,
     onValueSelected: (Int) -> Unit,
     labelFormatter: (Int) -> String = { String.format("%02d", it) },
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
-    val itemHeight = 44.dp
-    val totalHeight = 180.dp
-    val verticalPadding = (totalHeight - itemHeight) / 2 // Exactly 68.dp to align with center highlight
+    val itemHeight: Dp = if (compact) 36.dp else 44.dp
+    val totalHeight: Dp = if (compact) 138.dp else 180.dp
+    val verticalPadding: Dp = (totalHeight - itemHeight) / 2
+    val baseFontSize = if (compact) 20.sp else 24.sp
+    val primaryColor = LocalAppThemeColors.current.primary
 
     val totalRepeat = 100
     val startIndex = (totalRepeat / 2) * count + initialValue
@@ -202,7 +224,6 @@ private fun WheelColumn(
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
     val currentOnValueSelected by rememberUpdatedState(onValueSelected)
 
-    // Synchronize programmatic changes (e.g. quick duration buttons 1h, 2h, 3h)
     LaunchedEffect(initialValue) {
         if (!listState.isScrollInProgress) {
             val layoutInfo = listState.layoutInfo
@@ -221,6 +242,7 @@ private fun WheelColumn(
             }
         }
     }
+
     val snapLayoutInfoProvider = remember(listState) {
         SnapLayoutInfoProvider(
             lazyListState = listState,
@@ -229,7 +251,6 @@ private fun WheelColumn(
     }
     val flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider = snapLayoutInfoProvider)
 
-    // Mathematically derive the item closest to the viewport center at all times
     val selectedIndex by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -244,7 +265,6 @@ private fun WheelColumn(
         }
     }
 
-    // Smooth subtle micro-tick and tactile haptic pulse trigger
     LaunchedEffect(listState) {
         var previousRawIndex: Int? = null
 
@@ -264,7 +284,9 @@ private fun WheelColumn(
             .distinctUntilChanged()
             .collect { currentRawIndex ->
                 if (previousRawIndex != null && previousRawIndex != currentRawIndex) {
-                    feedbackManager.playTick(view)
+                    if (isHapticsEnabled) {
+                        feedbackManager.playTick(view)
+                    }
                 }
                 previousRawIndex = currentRawIndex
                 currentOnValueSelected(currentRawIndex % count)
@@ -275,12 +297,12 @@ private fun WheelColumn(
         modifier = modifier.height(totalHeight),
         contentAlignment = Alignment.Center
     ) {
-        // Center Highlight Pill (HyperOS Rounded Card)
+        // Center Highlight Pill
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(itemHeight)
-                .background(HyperSurfaceElevated, RoundedCornerShape(16.dp))
+                .background(HyperSurfaceElevated, RoundedCornerShape(if (compact) 12.dp else 16.dp))
         )
 
         LazyColumn(
@@ -311,9 +333,9 @@ private fun WheelColumn(
                 ) {
                     Text(
                         text = labelFormatter(itemValue),
-                        fontSize = 24.sp,
+                        fontSize = baseFontSize,
                         fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                        color = if (isSelected) HyperPrimary else TextSecondary,
+                        color = if (isSelected) primaryColor else TextSecondary,
                         modifier = Modifier
                             .scale(scale)
                             .alpha(alpha)

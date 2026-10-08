@@ -20,8 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hyperchunk.app.ui.theme.HyperPrimary
-import com.hyperchunk.app.ui.theme.HyperSurface
+import com.hyperchunk.app.ui.theme.LocalAppThemeColors
 import com.hyperchunk.app.ui.theme.TextTertiary
 
 @Composable
@@ -31,12 +30,13 @@ fun DaySelector(
     modifier: Modifier = Modifier
 ) {
     val dayLabels = listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
+    val appColors = LocalAppThemeColors.current
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(HyperSurface)
+            .background(appColors.surface)
             .padding(4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -46,7 +46,7 @@ fun DaySelector(
             val isSelected = (selectedDay == dayNumber)
 
             val bgColor by animateColorAsState(
-                targetValue = if (isSelected) HyperPrimary else Color.Transparent,
+                targetValue = if (isSelected) appColors.primary else Color.Transparent,
                 animationSpec = spring(dampingRatio = 0.82f, stiffness = 500f),
                 label = "dayBg"
             )
