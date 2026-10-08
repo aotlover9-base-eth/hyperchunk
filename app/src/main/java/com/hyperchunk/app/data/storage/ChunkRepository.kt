@@ -64,6 +64,9 @@ class ChunkRepository(private val context: Context) {
     private fun saveChunksToStorage(list: List<TimeChunk>) {
         val json = gson.toJson(list)
         prefs.edit().putString(KEY_CHUNKS, json).apply()
+        try {
+            com.hyperchunk.app.widget.HyperChunkWidgetProvider.updateAllWidgets(context)
+        } catch (_: Exception) {}
     }
 
     fun getChunksForDay(dayOfWeek: Int): List<TimeChunk> {

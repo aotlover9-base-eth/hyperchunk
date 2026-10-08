@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.widget.RemoteViews
 import com.hyperchunk.app.MainActivity
 import com.hyperchunk.app.R
@@ -24,9 +25,21 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle?
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        updateAppWidget(context, appWidgetManager, appWidgetId)
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_UPDATE_WIDGET) {
+        if (intent.action == ACTION_UPDATE_WIDGET ||
+            intent.action == Intent.ACTION_TIME_CHANGED ||
+            intent.action == Intent.ACTION_TIMEZONE_CHANGED) {
             updateAllWidgets(context)
         }
     }
@@ -35,9 +48,9 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
         const val ACTION_UPDATE_WIDGET = "com.hyperchunk.app.ACTION_UPDATE_WIDGET"
 
         fun updateAllWidgets(context: Context) {
-            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val appWidgetManager = AppWidgetManager.getInstance(context) ?: return
             val thisWidget = ComponentName(context, HyperChunkWidgetProvider::class.java)
-            val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
+            val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget) ?: return
             for (widgetId in allWidgetIds) {
                 updateAppWidget(context, appWidgetManager, widgetId)
             }
@@ -51,14 +64,20 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_hyperchunk)
 
             // Click opens app
-            val intent = Intent(context, MainActivity::class.java)
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
             val pendingIntent = PendingIntent.getActivity(
                 context,
-                0,
+                appWidgetId,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
+            views.setOnClickPendingIntent(R.id.widget_header, pendingIntent)
+            views.setOnClickPendingIntent(R.id.widget_task_title, pendingIntent)
+            views.setOnClickPendingIntent(R.id.widget_time_row, pendingIntent)
+            views.setOnClickPendingIntent(R.id.widget_next_task, pendingIntent)
 
             // Calculate current day and minute
             val cal = Calendar.getInstance()
@@ -78,6 +97,8 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             val (activeChunk, nextChunk) = repo.getCurrentAndNextChunk(dayOfWeek, currentMinute)
 
             if (activeChunk != null) {
+                views.setTextViewText(R.id.widget_status_pill, "NOW ACTIVE")
+                views.setTextColor(R.id.widget_status_pill, 0xFFA8FF78.toInt())
                 views.setTextViewText(R.id.widget_task_title, activeChunk.title)
                 views.setTextViewText(
                     R.id.widget_task_time,
@@ -91,27 +112,57 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                 }
                 views.setTextViewText(R.id.widget_time_remaining, remainingStr)
 
-                val progressPercent = (activeChunk.progress(currentMinute) * 100).toInt()
+                val progressPercent = (activeChunk.progress(currentMinute) * 100).toInt().coerceIn(0, 100)
                 views.setProgressBar(R.id.widget_progress, 100, progressPercent, false)
-                views.setTextViewText(R.id.widget_status_pill, "NOW ACTIVE")
+
+                if (nextChunk != null) {
+                    views.setTextViewText(
+                        R.id.widget_next_task,
+                        "Next: ${nextChunk.title} (${nextChunk.startTime12h})"
+                    )
+                } else {
+                    views.setTextViewText(R.id.widget_next_task, "Last chunk scheduled today")
+                }
+            } else if (nextChunk != null) {
+                // There is an upcoming chunk today
+                views.setTextViewText(R.id.widget_status_pill, "UPCOMING")
+                views.setTextColor(R.id.widget_status_pill, 0xFF00F2FE.toInt())
+                views.setTextViewText(R.id.widget_task_title, nextChunk.title)
+                views.setTextViewText(
+                    R.id.widget_task_time,
+                    "${nextChunk.startTime12h} – ${nextChunk.endTime12h}"
+                )
+                val minsUntil = nextChunk.startMinuteOfDay - currentMinute
+                val untilStr = if (minsUntil >= 60) {
+                    "Starts in ${minsUntil / 60}h ${minsUntil % 60}m"
+                } else {
+                    "Starts in ${minsUntil}m"
+                }
+                views.setTextViewText(R.id.widget_time_remaining, untilStr)
+                views.setProgressBar(R.id.widget_progress, 100, 0, false)
+
+                // Check if there is another chunk after nextChunk
+                val laterChunks = repo.getChunksForDay(dayOfWeek).filter { it.startMinuteOfDay >= nextChunk.endMinuteOfDay }
+                if (laterChunks.isNotEmpty()) {
+                    val after = laterChunks.first()
+                    views.setTextViewText(R.id.widget_next_task, "Later: ${after.title} (${after.startTime12h})")
+                } else {
+                    views.setTextViewText(R.id.widget_next_task, "Upcoming on today's schedule")
+                }
             } else {
-                views.setTextViewText(R.id.widget_task_title, "No Active Chunk")
-                views.setTextViewText(R.id.widget_task_time, "Enjoy your free time")
+                // No active or upcoming chunks
+                views.setTextViewText(R.id.widget_status_pill, "ALL CLEAR")
+                views.setTextColor(R.id.widget_status_pill, 0xFF8E9BAE.toInt())
+                views.setTextViewText(R.id.widget_task_title, "No Chunks Right Now")
+                views.setTextViewText(R.id.widget_task_time, "Tap to plan your schedule")
                 views.setTextViewText(R.id.widget_time_remaining, "—")
                 views.setProgressBar(R.id.widget_progress, 100, 0, false)
-                views.setTextViewText(R.id.widget_status_pill, "FREE SLOT")
+                views.setTextViewText(R.id.widget_next_task, "Open HyperChunk to add time blocks")
             }
 
-            if (nextChunk != null) {
-                views.setTextViewText(
-                    R.id.widget_next_task,
-                    "Next: ${nextChunk.title} (${nextChunk.startTime12h})"
-                )
-            } else {
-                views.setTextViewText(R.id.widget_next_task, "No more chunks scheduled today")
-            }
-
-            appWidgetManager.updateAppWidget(appWidgetId, views)
+            try {
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+            } catch (_: Exception) {}
         }
     }
 }

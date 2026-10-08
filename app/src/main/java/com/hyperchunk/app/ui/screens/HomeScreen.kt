@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hyperchunk.app.data.model.TimeChunk
@@ -71,6 +72,7 @@ fun HomeScreen(
     onCancelAlarm: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val dayNames = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
     var currentMinuteOfDay by remember {
@@ -99,6 +101,9 @@ fun HomeScreen(
         while (true) {
             val cal = Calendar.getInstance()
             currentMinuteOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+            try {
+                com.hyperchunk.app.widget.HyperChunkWidgetProvider.updateAllWidgets(context)
+            } catch (_: Exception) {}
             delay(15000)
         }
     }
@@ -420,11 +425,17 @@ fun HomeScreen(
                 } else {
                     onCancelAlarm(savedChunk.id)
                 }
+                try {
+                    com.hyperchunk.app.widget.HyperChunkWidgetProvider.updateAllWidgets(context)
+                } catch (_: Exception) {}
                 showEditSheet = false
             },
             onDelete = { idToDelete ->
                 onCancelAlarm(idToDelete)
                 repository.deleteChunk(idToDelete)
+                try {
+                    com.hyperchunk.app.widget.HyperChunkWidgetProvider.updateAllWidgets(context)
+                } catch (_: Exception) {}
                 showEditSheet = false
             }
         )

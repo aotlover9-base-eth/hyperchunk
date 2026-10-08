@@ -4,6 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg_hyperos"
+    android:clickable="true"
+    android:focusable="true"
     android:padding="16dp">
 
     <!-- Header bar -->
@@ -104,15 +106,14 @@
     <!-- Progress bar -->
     <ProgressBar
         android:id="@+id/widget_progress"
-        style="?android:attr/progressBarStyleHorizontal"
+        style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_width="match_parent"
         android:layout_height="4dp"
         android:layout_below="@id/widget_time_row"
         android:layout_marginTop="8dp"
         android:max="100"
-        android:progress="65"
-        android:progressTint="#00F2FE"
-        android:progressBackgroundTint="#2C3240" />
+        android:progress="0"
+        android:progressDrawable="@drawable/widget_progress_drawable" />
 
     <!-- Up Next task banner -->
     <TextView
