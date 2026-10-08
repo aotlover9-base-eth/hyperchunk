@@ -58,6 +58,7 @@ import com.hyperchunk.app.ui.components.ChunkCard
 import com.hyperchunk.app.ui.components.DaySelector
 import com.hyperchunk.app.ui.components.HyperCard
 import com.hyperchunk.app.ui.theme.HyperBgDark
+import com.hyperchunk.app.ui.theme.HyperCoral
 import com.hyperchunk.app.ui.theme.HyperCyan
 import com.hyperchunk.app.ui.theme.HyperLime
 import com.hyperchunk.app.ui.theme.HyperSurface
@@ -432,6 +433,24 @@ fun HomeScreen(
                                 }
                             }
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Button(
+                        onClick = {
+                            dayChunks.forEach { repository.deleteChunk(it.id) }
+                            showCopyDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = HyperSurfaceElevated),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Clear ${days[selectedDay - 1]} Chunks",
+                            color = HyperCoral,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             },
