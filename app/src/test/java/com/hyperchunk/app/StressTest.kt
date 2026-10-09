@@ -348,4 +348,114 @@ class StressTest {
         val nextAt1030 = sortedChunks.firstOrNull { it.startMinuteOfDay >= active!!.endMinuteOfDay }
         assertEquals("Tea", nextAt1030?.title)
     }
+
+    @Test
+    fun testCustomPresetJsonSerialization() {
+        val gson = com.google.gson.Gson()
+        val customPreset = com.hyperchunk.app.data.storage.RoutinePreset(
+            id = "custom_test_1",
+            name = "Founder Deep Sprint",
+            description = "High intensity build schedule",
+            iconEmoji = "🚀",
+            blocks = listOf(
+                com.hyperchunk.app.data.storage.PresetBlock("Sleep", 0, 420, ChunkCategory.SLEEP, hasAlarm = true),
+                com.hyperchunk.app.data.storage.PresetBlock("Sprint 1", 420, 720, ChunkCategory.WORK, hasAlarm = true),
+                com.hyperchunk.app.data.storage.PresetBlock("Sprint 2", 720, 1080, ChunkCategory.WORK),
+                com.hyperchunk.app.data.storage.PresetBlock("Wind Down", 1080, 1440, ChunkCategory.REST)
+            ),
+            isCustom = true
+        )
+
+        val json = gson.toJson(customPreset)
+        val deserialized = gson.fromJson(json, com.hyperchunk.app.data.storage.RoutinePreset::class.java)
+
+        assertEquals(customPreset.id, deserialized.id)
+        assertEquals(customPreset.name, deserialized.name)
+        assertEquals(customPreset.description, deserialized.description)
+        assertEquals(customPreset.iconEmoji, deserialized.iconEmoji)
+        assertEquals(customPreset.isCustom, deserialized.isCustom)
+        assertEquals(4, deserialized.blocks.size)
+        assertEquals("Sprint 1", deserialized.blocks[1].title)
+        assertTrue(deserialized.blocks[0].hasAlarm)
+    }
+
+    @Test
+    fun testIntervalOverlapDetectionMatrix() {
+        fun intervalsOverlap(start1: Int, end1: Int, start2: Int, end2: Int): Boolean {
+            val spans1 = if (end1 >= start1) listOf(Pair(start1, end1)) else listOf(Pair(start1, 1440), Pair(0, end1))
+            val spans2 = if (end2 >= start2) listOf(Pair(start2, end2)) else listOf(Pair(start2, 1440), Pair(0, end2))
+            for ((s1, e1) in spans1) {
+                for ((s2, e2) in spans2) {
+                    if (maxOf(s1, s2) < minOf(e1, e2)) return true
+                }
+            }
+            return false
+        }
+
+        // 1. Separate non-overlapping blocks
+        assertFalse(intervalsOverlap(0, 120, 180, 300))
+
+        // 2. Abutting blocks (end1 == start2) - must NOT be considered overlapping
+        assertFalse(intervalsOverlap(0, 120, 120, 240))
+        assertFalse(intervalsOverlap(300, 450, 450, 600))
+
+        // 3. Partial overlap
+        assertTrue(intervalsOverlap(100, 250, 200, 350))
+        assertTrue(intervalsOverlap(200, 350, 100, 250))
+
+        // 4. Complete enclosure
+        assertTrue(intervalsOverlap(100, 500, 200, 300))
+        assertTrue(intervalsOverlap(200, 300, 100, 500))
+
+        // 5. Overnight chunk (23:00 to 07:00 = 1380 to 420)
+        // Blocks inside morning span (0..420)
+        assertTrue(intervalsOverlap(1380, 420, 100, 200))
+        // Blocks inside evening span (1380..1440)
+        assertTrue(intervalsOverlap(1380, 420, 1390, 1420))
+        // Blocks during daytime (e.g. 500..800) must NOT overlap overnight sleep
+        assertFalse(intervalsOverlap(1380, 420, 500, 800))
+    }
+
+    @Test
+    fun testSmartMergeSimulation() {
+        fun intervalsOverlap(start1: Int, end1: Int, start2: Int, end2: Int): Boolean {
+            val spans1 = if (end1 >= start1) listOf(Pair(start1, end1)) else listOf(Pair(start1, 1440), Pair(0, end1))
+            val spans2 = if (end2 >= start2) listOf(Pair(start2, end2)) else listOf(Pair(start2, 1440), Pair(0, end2))
+            for ((s1, e1) in spans1) {
+                for ((s2, e2) in spans2) {
+                    if (maxOf(s1, s2) < minOf(e1, e2)) return true
+                }
+            }
+            return false
+        }
+
+        // Existing schedule on day: 10:00 - 13:00 (600..780) Focus Work
+        val existing = listOf(
+            TimeChunk(dayOfWeek = 1, title = "Existing Work", startMinuteOfDay = 600, endMinuteOfDay = 780, category = ChunkCategory.WORK)
+        )
+
+        // Preset trying to merge:
+        // 1. Sleep: 0..480 (non-overlapping -> ACCEPT)
+        // 2. Morning Call: 540..660 (overlaps 600..780 -> REJECT)
+        // 3. Gym: 1080..1200 (non-overlapping -> ACCEPT)
+        val presetBlocks = listOf(
+            com.hyperchunk.app.data.storage.PresetBlock("Sleep", 0, 480, ChunkCategory.SLEEP),
+            com.hyperchunk.app.data.storage.PresetBlock("Morning Call", 540, 660, ChunkCategory.WORK),
+            com.hyperchunk.app.data.storage.PresetBlock("Gym", 1080, 1200, ChunkCategory.FITNESS)
+        )
+
+        val acceptedBlocks = mutableListOf<com.hyperchunk.app.data.storage.PresetBlock>()
+        presetBlocks.forEach { block ->
+            val hasOverlap = existing.any { ex ->
+                intervalsOverlap(block.startMinute, block.endMinute, ex.startMinuteOfDay, ex.endMinuteOfDay)
+            }
+            if (!hasOverlap) {
+                acceptedBlocks.add(block)
+            }
+        }
+
+        assertEquals(2, acceptedBlocks.size)
+        assertEquals("Sleep", acceptedBlocks[0].title)
+        assertEquals("Gym", acceptedBlocks[1].title)
+    }
 }

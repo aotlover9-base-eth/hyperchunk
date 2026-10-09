@@ -16,7 +16,8 @@ data class RoutinePreset(
     val name: String,
     val description: String,
     val iconEmoji: String,
-    val blocks: List<PresetBlock>
+    val blocks: List<PresetBlock>,
+    val isCustom: Boolean = false
 )
 
 data class PresetBlock(
@@ -35,8 +36,32 @@ class ChunkRepository(private val context: Context) {
     private val _chunks = MutableStateFlow<List<TimeChunk>>(emptyList())
     val chunks: StateFlow<List<TimeChunk>> = _chunks.asStateFlow()
 
+    private val _customPresets = MutableStateFlow<List<RoutinePreset>>(emptyList())
+    val customPresets: StateFlow<List<RoutinePreset>> = _customPresets.asStateFlow()
+
     init {
         loadChunks()
+        loadCustomPresets()
+    }
+
+    private fun loadCustomPresets() {
+        val json = prefs.getString(KEY_CUSTOM_PRESETS, null)
+        if (json.isNullOrBlank()) {
+            _customPresets.value = emptyList()
+        } else {
+            val type = object : TypeToken<List<RoutinePreset>>() {}.type
+            val list: List<RoutinePreset> = try {
+                gson.fromJson(json, type) ?: emptyList()
+            } catch (_: Exception) {
+                emptyList()
+            }
+            _customPresets.value = list
+        }
+    }
+
+    private fun saveCustomPresetsToStorage(list: List<RoutinePreset>) {
+        val json = gson.toJson(list)
+        prefs.edit().putString(KEY_CUSTOM_PRESETS, json).apply()
     }
 
     private fun loadChunks() {
@@ -110,47 +135,165 @@ class ChunkRepository(private val context: Context) {
         _chunks.value = updated
     }
 
-    /**
-     * Replaces the target days' schedules with the source day's schedule.
-     */
-    fun syncDayToTargets(sourceDay: Int, targetDays: List<Int>) {
-        val sourceChunks = getChunksForDay(sourceDay)
-        val filtered = _chunks.value.filterNot { targetDays.contains(it.dayOfWeek) }.toMutableList()
+    private fun intervalsOverlap(start1: Int, end1: Int, start2: Int, end2: Int): Boolean {
+        val spans1 = if (end1 >= start1) listOf(Pair(start1, end1)) else listOf(Pair(start1, 1440), Pair(0, end1))
+        val spans2 = if (end2 >= start2) listOf(Pair(start2, end2)) else listOf(Pair(start2, 1440), Pair(0, end2))
 
-        targetDays.forEach { targetDay ->
-            val duplicated = sourceChunks.map {
-                it.copy(
-                    id = UUID.randomUUID().toString(),
-                    dayOfWeek = targetDay
-                )
+        for ((s1, e1) in spans1) {
+            for ((s2, e2) in spans2) {
+                if (maxOf(s1, s2) < minOf(e1, e2)) {
+                    return true
+                }
             }
-            filtered.addAll(duplicated)
         }
+        return false
+    }
 
-        saveChunksToStorage(filtered)
-        _chunks.value = filtered
+    /**
+     * Synchronizes schedule chunks from sourceDay to targetDays.
+     * If mergeOnly is true, only non-overlapping blocks are added into empty slots.
+     */
+    fun syncDayToTargets(sourceDay: Int, targetDays: List<Int>, mergeOnly: Boolean = false) {
+        val sourceChunks = getChunksForDay(sourceDay)
+        if (!mergeOnly) {
+            val filtered = _chunks.value.filterNot { targetDays.contains(it.dayOfWeek) }.toMutableList()
+            targetDays.forEach { targetDay ->
+                val duplicated = sourceChunks.map {
+                    it.copy(
+                        id = UUID.randomUUID().toString(),
+                        dayOfWeek = targetDay
+                    )
+                }
+                filtered.addAll(duplicated)
+            }
+            saveChunksToStorage(filtered)
+            _chunks.value = filtered
+        } else {
+            val updated = _chunks.value.toMutableList()
+            targetDays.forEach { targetDay ->
+                val existing = getChunksForDay(targetDay)
+                sourceChunks.forEach { source ->
+                    val hasOverlap = existing.any { ex ->
+                        intervalsOverlap(source.startMinuteOfDay, source.endMinuteOfDay, ex.startMinuteOfDay, ex.endMinuteOfDay)
+                    }
+                    if (!hasOverlap) {
+                        updated.add(
+                            source.copy(
+                                id = UUID.randomUUID().toString(),
+                                dayOfWeek = targetDay
+                            )
+                        )
+                    }
+                }
+            }
+            saveChunksToStorage(updated)
+            _chunks.value = updated
+        }
     }
 
     /**
      * Applies a structured productivity preset template to the target day.
+     * If mergeOnly is true, existing chunks are preserved and only non-overlapping blocks are filled.
      */
-    fun applyPreset(targetDay: Int, preset: RoutinePreset) {
-        val filtered = _chunks.value.filterNot { it.dayOfWeek == targetDay }.toMutableList()
-        val newChunks = preset.blocks.map { block ->
-            TimeChunk(
-                id = UUID.randomUUID().toString(),
-                dayOfWeek = targetDay,
-                title = block.title,
-                startMinuteOfDay = block.startMinute,
-                endMinuteOfDay = block.endMinute,
-                category = block.category,
-                colorHex = block.category.defaultColor,
-                hasAlarm = block.hasAlarm
+    fun applyPreset(targetDay: Int, preset: RoutinePreset, mergeOnly: Boolean = false) {
+        if (!mergeOnly) {
+            val filtered = _chunks.value.filterNot { it.dayOfWeek == targetDay }.toMutableList()
+            val newChunks = preset.blocks.map { block ->
+                TimeChunk(
+                    id = UUID.randomUUID().toString(),
+                    dayOfWeek = targetDay,
+                    title = block.title,
+                    startMinuteOfDay = block.startMinute,
+                    endMinuteOfDay = block.endMinute,
+                    category = block.category,
+                    colorHex = block.category.defaultColor,
+                    hasAlarm = block.hasAlarm
+                )
+            }
+            filtered.addAll(newChunks)
+            saveChunksToStorage(filtered)
+            _chunks.value = filtered
+        } else {
+            val existingChunks = getChunksForDay(targetDay)
+            val updated = _chunks.value.toMutableList()
+            preset.blocks.forEach { block ->
+                val hasOverlap = existingChunks.any { existing ->
+                    intervalsOverlap(block.startMinute, block.endMinute, existing.startMinuteOfDay, existing.endMinuteOfDay)
+                }
+                if (!hasOverlap) {
+                    val newChunk = TimeChunk(
+                        id = UUID.randomUUID().toString(),
+                        dayOfWeek = targetDay,
+                        title = block.title,
+                        startMinuteOfDay = block.startMinute,
+                        endMinuteOfDay = block.endMinute,
+                        category = block.category,
+                        colorHex = block.category.defaultColor,
+                        hasAlarm = block.hasAlarm
+                    )
+                    updated.add(newChunk)
+                }
+            }
+            saveChunksToStorage(updated)
+            _chunks.value = updated
+        }
+    }
+
+    /**
+     * Saves a user-created or updated custom routine preset.
+     */
+    fun saveCustomPreset(preset: RoutinePreset) {
+        val updated = _customPresets.value.filterNot { it.id == preset.id }.toMutableList()
+        updated.add(preset.copy(isCustom = true))
+        saveCustomPresetsToStorage(updated)
+        _customPresets.value = updated
+    }
+
+    /**
+     * Deletes a user-created custom routine preset.
+     */
+    fun deleteCustomPreset(id: String) {
+        val updated = _customPresets.value.filterNot { it.id == id }
+        saveCustomPresetsToStorage(updated)
+        _customPresets.value = updated
+    }
+
+    /**
+     * Captures all chunks from a given day and saves them as a new custom RoutinePreset.
+     */
+    fun saveDayAsPreset(
+        dayOfWeek: Int,
+        name: String,
+        description: String,
+        iconEmoji: String
+    ): RoutinePreset {
+        val dayChunks = getChunksForDay(dayOfWeek).sortedBy { it.startMinuteOfDay }
+        val blocks = dayChunks.map { chunk ->
+            PresetBlock(
+                title = chunk.title,
+                startMinute = chunk.startMinuteOfDay,
+                endMinute = chunk.endMinuteOfDay,
+                category = chunk.category,
+                hasAlarm = chunk.hasAlarm
             )
         }
-        filtered.addAll(newChunks)
-        saveChunksToStorage(filtered)
-        _chunks.value = filtered
+        val preset = RoutinePreset(
+            id = UUID.randomUUID().toString(),
+            name = name.ifBlank { "Custom Routine" },
+            description = description.ifBlank { "${blocks.size} blocks scheduled" },
+            iconEmoji = iconEmoji.ifBlank { "⭐" },
+            blocks = blocks,
+            isCustom = true
+        )
+        saveCustomPreset(preset)
+        return preset
+    }
+
+    /**
+     * Returns all presets (both built-in curated templates and user custom routines).
+     */
+    fun getAllPresets(): List<RoutinePreset> {
+        return BUILT_IN_PRESETS + _customPresets.value
     }
 
     fun getCurrentAndNextChunk(dayOfWeek: Int, currentMinute: Int): Pair<TimeChunk?, TimeChunk?> {
@@ -299,6 +442,7 @@ class ChunkRepository(private val context: Context) {
 
     companion object {
         private const val KEY_CHUNKS = "saved_time_chunks_json"
+        private const val KEY_CUSTOM_PRESETS = "custom_routine_presets_json"
         private const val KEY_VERSION = "data_version_clean_v2"
 
         val BUILT_IN_PRESETS = listOf(

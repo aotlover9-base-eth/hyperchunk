@@ -57,9 +57,11 @@ import com.hyperchunk.app.data.model.TimeChunk
 import com.hyperchunk.app.data.model.toMonochromeColor
 import com.hyperchunk.app.data.storage.ChunkRepository
 import com.hyperchunk.app.data.storage.SettingsRepository
+import com.hyperchunk.app.data.storage.RoutinePreset
 import com.hyperchunk.app.ui.components.Chunk24hChronograph
 import com.hyperchunk.app.ui.components.ChunkCard
 import com.hyperchunk.app.ui.components.DaySelector
+import com.hyperchunk.app.ui.components.EditPresetSheet
 import com.hyperchunk.app.ui.components.RoutineHubSheet
 import com.hyperchunk.app.ui.components.SettingsSheet
 import com.hyperchunk.app.ui.theme.HyperAmber
@@ -196,6 +198,10 @@ fun HomeScreen(
     var showEditSheet by remember { mutableStateOf(false) }
     var showRoutineHubSheet by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
+
+    val customPresets by repository.customPresets.collectAsState()
+    var presetToEdit by remember { mutableStateOf<RoutinePreset?>(null) }
+    var showPresetEditorSheet by remember { mutableStateOf(false) }
 
     val appColors = LocalAppThemeColors.current
     val settings by settingsRepository.settings.collectAsState()
@@ -849,46 +855,71 @@ fun HomeScreen(
         )
     }
 
-    // Smart Routine Hub Sheet
+    // Modular Routine Studio Sheet
     if (showRoutineHubSheet) {
         RoutineHubSheet(
             selectedDay = selectedDay,
             dayName = dayNames[selectedDay - 1],
+            customPresets = customPresets,
             onDismiss = { showRoutineHubSheet = false },
-            onSyncToWeekdays = {
-                val targets = listOf(1, 2, 3, 4, 5)
-                targets.forEach { targetDay ->
-                    repository.getChunksForDay(targetDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
+            onSyncToTargets = { targets, mergeOnly ->
+                if (!mergeOnly) {
+                    targets.forEach { targetDay ->
+                        repository.getChunksForDay(targetDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
+                    }
                 }
-                repository.syncDayToTargets(selectedDay, targets)
-                targets.forEach { targetDay ->
-                    repository.getChunksForDay(targetDay).filter { it.hasAlarm }.forEach { onScheduleAlarm(it) }
-                }
-                showRoutineHubSheet = false
-            },
-            onSyncToWeekend = {
-                val targets = listOf(6, 7)
-                targets.forEach { targetDay ->
-                    repository.getChunksForDay(targetDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
-                }
-                repository.syncDayToTargets(selectedDay, targets)
+                repository.syncDayToTargets(selectedDay, targets, mergeOnly)
                 targets.forEach { targetDay ->
                     repository.getChunksForDay(targetDay).filter { it.hasAlarm }.forEach { onScheduleAlarm(it) }
                 }
                 showRoutineHubSheet = false
             },
-            onApplyPreset = { preset ->
-                repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
-                repository.applyPreset(selectedDay, preset)
+            onApplyPreset = { preset, mergeOnly ->
+                if (!mergeOnly) {
+                    repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
+                }
+                repository.applyPreset(selectedDay, preset, mergeOnly)
                 repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach {
                     onScheduleAlarm(it)
                 }
                 showRoutineHubSheet = false
             },
+            onSaveDayAsPreset = {
+                val dayNameStr = dayNames[selectedDay - 1]
+                repository.saveDayAsPreset(
+                    dayOfWeek = selectedDay,
+                    name = "$dayNameStr Blueprint",
+                    description = "Custom schedule saved from $dayNameStr",
+                    iconEmoji = "⭐"
+                )
+            },
+            onCreateCustomPreset = {
+                presetToEdit = null
+                showPresetEditorSheet = true
+            },
+            onEditPreset = { preset ->
+                presetToEdit = preset
+                showPresetEditorSheet = true
+            },
+            onDeletePreset = { presetId ->
+                repository.deleteCustomPreset(presetId)
+            },
             onClearDay = {
                 repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
                 repository.clearDay(selectedDay)
                 showRoutineHubSheet = false
+            }
+        )
+    }
+
+    // Custom Routine Preset Editor Sheet
+    if (showPresetEditorSheet) {
+        EditPresetSheet(
+            presetToEdit = presetToEdit,
+            onDismiss = { showPresetEditorSheet = false },
+            onSave = { savedPreset ->
+                repository.saveCustomPreset(savedPreset)
+                showPresetEditorSheet = false
             }
         )
     }
