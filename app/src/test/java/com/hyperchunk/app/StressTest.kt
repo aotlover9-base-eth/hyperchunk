@@ -266,4 +266,86 @@ class StressTest {
             }
         }
     }
+
+    @Test
+    fun testBuiltInPresetsContiguityAnd24hTotal() {
+        val presets = com.hyperchunk.app.data.storage.ChunkRepository.BUILT_IN_PRESETS
+        assertEquals(3, presets.size)
+
+        for (preset in presets) {
+            var cursor = 0
+            var totalDuration = 0
+            for (block in preset.blocks) {
+                assertEquals("Block ${block.title} must start at previous block end ($cursor)", cursor, block.startMinute)
+                assertTrue("Block end must be strictly after start", block.endMinute > block.startMinute)
+                val duration = block.endMinute - block.startMinute
+                totalDuration += duration
+                cursor = block.endMinute
+            }
+            assertEquals("Preset ${preset.name} must cover the full 24h (1440m)", 1440, totalDuration)
+            assertEquals(1440, cursor)
+        }
+    }
+
+    @Test
+    fun testGapFillingSimulationWithOvernightChunk() {
+        // Scenario: Day has Morning lecture (540..720) and Late Night sleep (1380..360)
+        val chunks = listOf(
+            TimeChunk(dayOfWeek = 1, title = "Lecture", startMinuteOfDay = 540, endMinuteOfDay = 720, category = ChunkCategory.STUDY),
+            TimeChunk(dayOfWeek = 1, title = "Sleep", startMinuteOfDay = 1380, endMinuteOfDay = 360, category = ChunkCategory.SLEEP)
+        ).sortedBy { it.startMinuteOfDay }
+
+        val gaps = mutableListOf<Pair<Int, Int>>()
+        var cursor = 0
+        for (chunk in chunks) {
+            val chunkStart = chunk.startMinuteOfDay
+            val chunkEnd = chunk.endMinuteOfDay
+
+            if (chunkEnd >= chunkStart) {
+                if (chunkStart > cursor && (chunkStart - cursor) >= 15) {
+                    gaps.add(Pair(cursor, chunkStart))
+                }
+                cursor = maxOf(cursor, chunkEnd)
+            } else {
+                if (chunkStart > cursor && (chunkStart - cursor) >= 15) {
+                    gaps.add(Pair(cursor, chunkStart))
+                }
+                cursor = 1440
+            }
+        }
+        if (cursor < 1440 && (1440 - cursor) >= 15) {
+            gaps.add(Pair(cursor, 1440))
+        }
+
+        // Expected gaps:
+        // Gap 1: 0 to 540 (Morning before lecture)
+        // Gap 2: 720 to 1380 (Afternoon & evening between lecture and sleep)
+        // From 1380 to 1440 is occupied by sleep, so cursor was 1440. No gap after 1380!
+        assertEquals(2, gaps.size)
+        assertEquals(Pair(0, 540), gaps[0])
+        assertEquals(Pair(720, 1380), gaps[1])
+    }
+
+    @Test
+    fun testChronologicalNextChunkSelection() {
+        // Add chunks out of order: 16:00 (960) added first, then 10:00 (600) added second
+        val rawChunks = listOf(
+            TimeChunk(id = "c2", dayOfWeek = 1, title = "Tea", startMinuteOfDay = 960, endMinuteOfDay = 1020, category = ChunkCategory.MEAL),
+            TimeChunk(id = "c1", dayOfWeek = 1, title = "Morning Work", startMinuteOfDay = 600, endMinuteOfDay = 720, category = ChunkCategory.WORK)
+        )
+
+        // Sorted chronologically
+        val sortedChunks = rawChunks.sortedBy { it.startMinuteOfDay }
+
+        // At 08:00 (480) - Before both chunks
+        val nextAt8 = sortedChunks.firstOrNull { it.startMinuteOfDay > 480 } ?: sortedChunks.firstOrNull()
+        assertNotNull(nextAt8)
+        assertEquals("Morning Work", nextAt8?.title)
+
+        // At 10:30 (630) - Inside Morning Work (600..720)
+        val active = sortedChunks.firstOrNull { it.isCurrentlyActive(630) }
+        assertEquals("Morning Work", active?.title)
+        val nextAt1030 = sortedChunks.firstOrNull { it.startMinuteOfDay >= active!!.endMinuteOfDay }
+        assertEquals("Tea", nextAt1030?.title)
+    }
 }

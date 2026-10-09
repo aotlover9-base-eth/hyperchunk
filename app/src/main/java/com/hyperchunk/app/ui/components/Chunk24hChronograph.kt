@@ -12,15 +12,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,24 +39,23 @@ import androidx.compose.ui.unit.sp
 import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.data.model.TimeChunk
 import com.hyperchunk.app.data.model.toMonochromeColor
-import com.hyperchunk.app.ui.theme.HyperEmerald
-import com.hyperchunk.app.ui.theme.HyperSurfaceVariant
 import com.hyperchunk.app.ui.theme.LocalAppSettings
 import com.hyperchunk.app.ui.theme.LocalAppThemeColors
-import com.hyperchunk.app.ui.theme.TextSecondary
-import com.hyperchunk.app.ui.theme.TextTertiary
+import com.hyperchunk.app.ui.theme.parseHexColor
+import kotlin.math.PI
+import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Luxury 24-Hour Polar Chronograph Dial.
+ * Precision 24-Hour Polar Chronograph Dial matching reference design.
  * Features:
+ * - Rounded capsule arc segments (StrokeCap.Round) with calibrated angular spacing
  * - 8 outer cardinal time labels (12 AM, 3 AM, 6 AM, 9 AM, 12 PM, 3 PM, 6 PM, 9 PM)
- * - Concentric outer guide ring with radial cardinal tick marks
- * - 24 inner-rim precision hour notches
- * - Segmented chunk blocks with angular gaps and dark separator slits
- * - Live sun sweep needle with glowing aura & center bead
- * - Center complication with bold digital time & active chunk pill badge
+ * - Dual radial tick marks at all 8 cardinal/octant points (inner and outer ticks)
+ * - 24 inner rim hour index notches
+ * - Live sun indicator bead with multi-layer glowing halo aura
+ * - Center complication: bold white digital clock + rounded status capsule pill
  */
 @Composable
 fun Chunk24hChronograph(
@@ -67,21 +63,31 @@ fun Chunk24hChronograph(
     currentMinute: Int,
     activeChunk: TimeChunk?,
     modifier: Modifier = Modifier,
+    nextChunk: TimeChunk? = null,
+    isToday: Boolean = true,
+    dayName: String = "",
     compactMode: Boolean = LocalAppSettings.current.compactMode
 ) {
     val appColors = LocalAppThemeColors.current
-    val isMonochrome = LocalAppSettings.current.paletteMode == PaletteMode.MONOCHROME
+    val settings = LocalAppSettings.current
+    val isMonochrome = settings.paletteMode == PaletteMode.MONOCHROME
+
+    // 12h / 24h digital time formatting
     val currentH = currentMinute / 60
     val currentM = currentMinute % 60
-    val hour12 = if (currentH % 12 == 0) 12 else (currentH % 12)
-    val amPm = if (currentH < 12) "AM" else "PM"
-    val formattedNow = String.format("%d:%02d %s", hour12, currentM, amPm)
+    val formattedTime = if (settings.use24HourFormat) {
+        String.format("%02d:%02d", currentH, currentM)
+    } else {
+        val hour12 = if (currentH % 12 == 0) 12 else (currentH % 12)
+        val amPm = if (currentH < 12) "AM" else "PM"
+        String.format("%d:%02d %s", hour12, currentM, amPm)
+    }
 
-    // Pulsing aura animation for current time needle
+    // Pulsing aura animation for current time needle bead
     val infiniteTransition = rememberInfiniteTransition(label = "needlePulse")
     val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.88f,
-        targetValue = 1.30f,
+        initialValue = 0.90f,
+        targetValue = 1.35f,
         animationSpec = infiniteRepeatable(
             animation = tween(1400, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -94,50 +100,13 @@ fun Chunk24hChronograph(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(32.dp))
             .background(appColors.surface)
-            .padding(if (compactMode) 14.dp else 16.dp),
+            .padding(vertical = if (compactMode) 12.dp else 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Top Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(appColors.primary, CircleShape)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "24-HOUR DIAL",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextSecondary,
-                    letterSpacing = 1.2.sp
-                )
-            }
-
-            // Summary tag
-            val totalScheduledMinutes = chunks.sumOf { it.durationMinutes }
-            val scheduledHours = totalScheduledMinutes / 60f
-            Text(
-                text = String.format("%.1fh Scheduled", scheduledHours),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (isMonochrome) Color(0xFFE2E8F0) else HyperEmerald
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Circular 24-Hour Chronograph Dial Container
-        val dialSize = if (compactMode) 250.dp else 274.dp
+        // Dial Canvas Container
+        val dialSize = if (compactMode) 262.dp else 288.dp
         Box(
             modifier = Modifier
                 .size(dialSize)
@@ -148,26 +117,44 @@ fun Chunk24hChronograph(
                 val minDim = size.minDimension
                 val centerOffset = Offset(size.width / 2f, size.height / 2f)
 
-                // Layout measurements
-                val strokePx = if (compactMode) 19.dp.toPx() else 22.dp.toPx()
-                val outerLabelRadius = (minDim / 2f) - 15.dp.toPx()
-                val outerGuideRadius = outerLabelRadius - 13.dp.toPx()
-                val outerRimRadius = outerGuideRadius - 4.dp.toPx()
+                // Layout Radii Calculations
+                val strokePx = if (compactMode) 18.dp.toPx() else 21.dp.toPx()
+                val outerLabelRadius = (minDim / 2f) - 13.dp.toPx()
+                val outerTickOuter = outerLabelRadius - 13.dp.toPx()
+                val outerRimRadius = outerTickOuter - 6.dp.toPx()
                 val radius = outerRimRadius - (strokePx / 2f)
                 val innerRimRadius = radius - (strokePx / 2f)
+                val innerTickInner = innerRimRadius - 7.dp.toPx()
 
                 val arcTopLeft = Offset(centerOffset.x - radius, centerOffset.y - radius)
                 val arcSize = Size(radius * 2f, radius * 2f)
 
-                // 1. Outer Guideline Ring (delicate concentric line)
-                drawCircle(
-                    color = Color(0xFF2B354A).copy(alpha = 0.55f),
-                    radius = outerGuideRadius,
-                    center = centerOffset,
-                    style = Stroke(width = 1.dp.toPx())
+                // 1. Dark Concentric Track Background Ring
+                drawArc(
+                    color = Color(0xFF111520),
+                    startAngle = 0f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = arcTopLeft,
+                    size = arcSize,
+                    style = Stroke(width = strokePx, cap = StrokeCap.Butt)
                 )
 
-                // 2. Outer Cardinal Time Labels & Outer Ticks (12 AM, 3 AM, 6 AM, 9 AM, 12 PM, 3 PM, 6 PM, 9 PM)
+                // Subtle inner & outer track boundary guide circles
+                drawCircle(
+                    color = Color(0xFF1E2536),
+                    radius = innerRimRadius,
+                    center = centerOffset,
+                    style = Stroke(width = 0.8.dp.toPx())
+                )
+                drawCircle(
+                    color = Color(0xFF1E2536),
+                    radius = outerRimRadius,
+                    center = centerOffset,
+                    style = Stroke(width = 0.8.dp.toPx())
+                )
+
+                // 2. Cardinal and Octant Radial Tick Marks (0, 3, 6, 9, 12, 15, 18, 21)
                 val cardinalHours = listOf(
                     0 to "12 AM",
                     3 to "3 AM",
@@ -180,9 +167,9 @@ fun Chunk24hChronograph(
                 )
 
                 val labelStyle = TextStyle(
-                    fontSize = if (compactMode) 10.sp else 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFCBD5E1)
+                    fontSize = if (compactMode) 10.5.sp else 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFE2E8F0)
                 )
 
                 for ((hour, labelText) in cardinalHours) {
@@ -191,7 +178,7 @@ fun Chunk24hChronograph(
                     val cosA = cos(angleRad).toFloat()
                     val sinA = sin(angleRad).toFloat()
 
-                    // Draw outer label
+                    // Draw Outer Label
                     val labelCenter = Offset(
                         centerOffset.x + outerLabelRadius * cosA,
                         centerOffset.y + outerLabelRadius * sinA
@@ -205,113 +192,90 @@ fun Chunk24hChronograph(
                         )
                     )
 
-                    // Draw outer radial tick
-                    val isMajor = (hour % 6 == 0) // 12 AM, 6 AM, 12 PM, 6 PM
-                    val tickOuter = if (isMajor) outerGuideRadius + 3.5.dp.toPx() else outerGuideRadius + 1.dp.toPx()
-                    val tickColor = if (isMajor) Color.White else Color(0xFFCBD5E1)
-                    val tickStroke = if (isMajor) 2.dp.toPx() else 1.5.dp.toPx()
-
+                    // Draw Outer Radial Tick (pointing from outer rim outwards toward label)
                     drawLine(
-                        color = tickColor,
+                        color = Color.White,
                         start = Offset(centerOffset.x + outerRimRadius * cosA, centerOffset.y + outerRimRadius * sinA),
-                        end = Offset(centerOffset.x + tickOuter * cosA, centerOffset.y + tickOuter * sinA),
-                        strokeWidth = tickStroke,
+                        end = Offset(centerOffset.x + outerTickOuter * cosA, centerOffset.y + outerTickOuter * sinA),
+                        strokeWidth = 2.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+
+                    // Draw Inner Radial Tick (pointing from inner rim inwards toward center)
+                    drawLine(
+                        color = Color.White,
+                        start = Offset(centerOffset.x + innerRimRadius * cosA, centerOffset.y + innerRimRadius * sinA),
+                        end = Offset(centerOffset.x + innerTickInner * cosA, centerOffset.y + innerTickInner * sinA),
+                        strokeWidth = 2.dp.toPx(),
                         cap = StrokeCap.Round
                     )
                 }
 
-                // 3. Inner Rim Hour Ticks (all 24 hours)
+                // 3. Subtle 1-Hour Index Ticks on Inner Rim
                 for (h in 0 until 24) {
+                    if (h % 3 == 0) continue // Skip octants already drawn with bold white ticks
                     val angleDeg = (h / 24f) * 360f - 90f
                     val angleRad = Math.toRadians(angleDeg.toDouble())
                     val cosA = cos(angleRad).toFloat()
                     val sinA = sin(angleRad).toFloat()
 
-                    val isMajor = (h % 6 == 0)   // 0, 6, 12, 18
-                    val isOctant = (h % 3 == 0)  // 3, 9, 15, 21
-
-                    val (tickLen, tickColor, tickStroke) = when {
-                        isMajor -> Triple(7.dp.toPx(), Color.White, 2.dp.toPx())
-                        isOctant -> Triple(4.5.dp.toPx(), Color(0xFFCBD5E1), 1.5.dp.toPx())
-                        else -> Triple(2.5.dp.toPx(), Color(0xFF384459), 1.1.dp.toPx())
-                    }
-
-                    val innerStart = Offset(
-                        centerOffset.x + (innerRimRadius - tickLen) * cosA,
-                        centerOffset.y + (innerRimRadius - tickLen) * sinA
-                    )
-                    val innerEnd = Offset(
-                        centerOffset.x + innerRimRadius * cosA,
-                        centerOffset.y + innerRimRadius * sinA
-                    )
-
+                    val subTickInner = innerRimRadius - 3.5.dp.toPx()
                     drawLine(
-                        color = tickColor,
-                        start = innerStart,
-                        end = innerEnd,
-                        strokeWidth = tickStroke,
+                        color = Color(0xFF2C374C),
+                        start = Offset(centerOffset.x + innerRimRadius * cosA, centerOffset.y + innerRimRadius * sinA),
+                        end = Offset(centerOffset.x + subTickInner * cosA, centerOffset.y + subTickInner * sinA),
+                        strokeWidth = 1.2.dp.toPx(),
                         cap = StrokeCap.Round
                     )
                 }
 
-                // 4. Dark Frosted Track Background Ring
-                drawArc(
-                    color = Color(0xFF131824),
-                    startAngle = 0f,
-                    sweepAngle = 360f,
-                    useCenter = false,
-                    topLeft = arcTopLeft,
-                    size = arcSize,
-                    style = Stroke(width = strokePx, cap = StrokeCap.Butt)
-                )
+                // 4. Rounded Capsule Arc Segments (StrokeCap.Round)
+                // Half-cap angular clearance calculation: capAngle = asin((strokePx/2) / radius) in degrees
+                val capRadiusRatio = (strokePx / 2f) / radius.coerceAtLeast(1f)
+                val capAngleDeg = (asin(capRadiusRatio.coerceIn(0f, 0.99f)) * (180f / PI.toFloat()))
+                val desiredGapDeg = 2.4f // Visible gap between adjacent rounded ends
 
-                // Concentric inner & outer track border rings for crisp depth
-                drawCircle(
-                    color = Color(0xFF1E2638),
-                    radius = innerRimRadius,
-                    center = centerOffset,
-                    style = Stroke(width = 1.dp.toPx())
-                )
-                drawCircle(
-                    color = Color(0xFF1E2638),
-                    radius = outerRimRadius,
-                    center = centerOffset,
-                    style = Stroke(width = 1.dp.toPx())
-                )
-
-                // 5. Category Segment Arcs (with angular gaps)
                 chunks.forEach { chunk ->
                     if (chunk.durationMinutes <= 0) return@forEach
-                    val rawSweep = ((chunk.durationMinutes / 1440f) * 360f)
-                    val startAngle = (chunk.startMinuteOfDay / 1440f) * 360f - 90f
-
-                    // Subtract angular gap so adjacent blocks don't bleed into each other
-                    val gap = if (rawSweep > 8f) 2.2f else 1.2f
-                    val drawStart = startAngle + gap / 2f
-                    val drawSweep = (rawSweep - gap).coerceAtLeast(1.2f)
+                    val rawSweep = (chunk.durationMinutes / 1440f) * 360f
+                    val rawStartAngle = (chunk.startMinuteOfDay / 1440f) * 360f - 90f
 
                     val chunkColor = if (isMonochrome) {
                         chunk.toMonochromeColor()
                     } else {
-                        com.hyperchunk.app.ui.theme.parseHexColor(chunk.colorHex, appColors.primary)
+                        parseHexColor(chunk.colorHex, appColors.primary)
                     }
 
-                    val isActive = activeChunk?.id == chunk.id
+                    // Angular clearance: cap extends capAngleDeg beyond start and end
+                    val totalCapAllowance = (2f * capAngleDeg) + desiredGapDeg
 
-                    // Active chunk glowing aura
+                    val (drawStart, drawSweep) = if (rawSweep > totalCapAllowance) {
+                        Pair(
+                            rawStartAngle + capAngleDeg + (desiredGapDeg / 2f),
+                            rawSweep - totalCapAllowance
+                        )
+                    } else {
+                        // For very small chunks, render a minimal rounded capsule centered at mid-slot
+                        val midAngle = rawStartAngle + (rawSweep / 2f)
+                        Pair(midAngle - 0.5f, 1.0f)
+                    }
+
+                    val isActive = (activeChunk?.id == chunk.id) && isToday
+
+                    // Active chunk glowing back-aura
                     if (isActive) {
                         drawArc(
-                            color = if (isMonochrome) Color.White.copy(alpha = 0.35f) else chunkColor.copy(alpha = 0.28f),
+                            color = if (isMonochrome) Color.White.copy(alpha = 0.30f) else chunkColor.copy(alpha = 0.28f),
                             startAngle = drawStart,
                             sweepAngle = drawSweep,
                             useCenter = false,
                             topLeft = Offset(centerOffset.x - (radius + 2.dp.toPx()), centerOffset.y - (radius + 2.dp.toPx())),
                             size = Size((radius + 2.dp.toPx()) * 2f, (radius + 2.dp.toPx()) * 2f),
-                            style = Stroke(width = strokePx + 4.dp.toPx(), cap = StrokeCap.Butt)
+                            style = Stroke(width = strokePx + 4.dp.toPx(), cap = StrokeCap.Round)
                         )
                     }
 
-                    // Main crisp segment arc
+                    // Primary Segment Capsule with buttery smooth rounded caps
                     drawArc(
                         color = chunkColor,
                         startAngle = drawStart,
@@ -319,135 +283,194 @@ fun Chunk24hChronograph(
                         useCenter = false,
                         topLeft = arcTopLeft,
                         size = arcSize,
-                        style = Stroke(width = strokePx, cap = StrokeCap.Butt)
+                        style = Stroke(width = strokePx, cap = StrokeCap.Round)
                     )
                 }
 
-                // 6. Crisp Dark Radial Separator Slit Lines at every chunk boundary
-                chunks.forEach { chunk ->
-                    if (chunk.durationMinutes <= 0) return@forEach
-                    val boundaryAngles = if (chunk.startMinuteOfDay == chunk.endMinuteOfDay) {
-                        listOf((chunk.startMinuteOfDay / 1440f) * 360f - 90f)
-                    } else {
-                        listOf(
-                            (chunk.startMinuteOfDay / 1440f) * 360f - 90f,
-                            (chunk.endMinuteOfDay / 1440f) * 360f - 90f
-                        )
-                    }
-                    for (bAngle in boundaryAngles) {
-                        val bRad = Math.toRadians(bAngle.toDouble())
-                        val cosB = cos(bRad).toFloat()
-                        val sinB = sin(bRad).toFloat()
+                // 5. Live Glowing Sun Sweep Bead Needle
+                val needleAngleDeg = (currentMinute / 1440f) * 360f - 90f
+                val needleAngleRad = Math.toRadians(needleAngleDeg.toDouble())
+                val needleCos = cos(needleAngleRad).toFloat()
+                val needleSin = sin(needleAngleRad).toFloat()
 
-                        val slitStart = Offset(
-                            centerOffset.x + (innerRimRadius - 1.dp.toPx()) * cosB,
-                            centerOffset.y + (innerRimRadius - 1.dp.toPx()) * sinB
-                        )
-                        val slitEnd = Offset(
-                            centerOffset.x + (outerRimRadius + 1.dp.toPx()) * cosB,
-                            centerOffset.y + (outerRimRadius + 1.dp.toPx()) * sinB
-                        )
-
-                        drawLine(
-                            color = Color(0xFF0F131D),
-                            start = slitStart,
-                            end = slitEnd,
-                            strokeWidth = 2.5.dp.toPx(),
-                            cap = StrokeCap.Butt
-                        )
-                    }
-                }
-
-                // 7. Live Sun Needle Current Time Indicator
-                val currentAngleDeg = (currentMinute / 1440f) * 360f - 90f
-                val currentAngleRad = Math.toRadians(currentAngleDeg.toDouble())
-                val needlePos = Offset(
-                    (centerOffset.x + radius * cos(currentAngleRad)).toFloat(),
-                    (centerOffset.y + radius * sin(currentAngleRad)).toFloat()
+                val needleCenter = Offset(
+                    centerOffset.x + radius * needleCos,
+                    centerOffset.y + radius * needleSin
                 )
 
-                // Glowing ambient halo
+                // Outer soft glowing aura
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.20f),
-                    radius = 13.dp.toPx() * pulseScale,
-                    center = needlePos
+                    color = Color.White.copy(alpha = 0.16f * pulseScale),
+                    radius = if (compactMode) 18.dp.toPx() else 22.dp.toPx(),
+                    center = needleCenter
                 )
-                // Translucent backing disc
+
+                // Core glowing corona
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.35f),
-                    radius = 7.dp.toPx(),
-                    center = needlePos
+                    color = Color.White.copy(alpha = 0.38f * pulseScale),
+                    radius = if (compactMode) 9.dp.toPx() else 11.dp.toPx(),
+                    center = needleCenter
                 )
-                // Solid crisp white center bead
+
+                // Crisp solid white center bead
                 drawCircle(
                     color = Color.White,
-                    radius = 4.8.dp.toPx(),
-                    center = needlePos
+                    radius = if (compactMode) 4.5.dp.toPx() else 5.2.dp.toPx(),
+                    center = needleCenter
                 )
             }
 
-            // Center Complication Information
+            // Center Digital Complication Readout
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
             ) {
+                if (!isToday && dayName.isNotBlank()) {
+                    Text(
+                        text = dayName.uppercase(),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF64748B),
+                        letterSpacing = 1.3.sp
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                }
+
+                // Large Bold Digital Clock
                 Text(
-                    text = formattedNow,
-                    fontSize = if (compactMode) 28.sp else 32.sp,
+                    text = formattedTime,
+                    fontSize = if (compactMode) 32.sp else 36.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White,
                     letterSpacing = 0.5.sp
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                if (activeChunk != null) {
-                    val remaining = activeChunk.remainingMinutes(currentMinute)
-                    val chunkColor = if (isMonochrome) {
-                        activeChunk.toMonochromeColor()
-                    } else {
-                        com.hyperchunk.app.ui.theme.parseHexColor(activeChunk.colorHex, appColors.primary)
+                // Sleek Capsule Pill Complication
+                when {
+                    isToday && activeChunk != null -> {
+                        val remaining = activeChunk.remainingMinutes(currentMinute)
+                        val chunkColor = if (isMonochrome) {
+                            Color.White
+                        } else {
+                            parseHexColor(activeChunk.colorHex, appColors.primary)
+                        }
+
+                        val remainingText = if (remaining >= 60) {
+                            "${remaining / 60}h ${remaining % 60}m"
+                        } else {
+                            "${remaining}m"
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Color(0xFF131722))
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isMonochrome) Color.White.copy(alpha = 0.45f) else chunkColor.copy(alpha = 0.35f),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .padding(horizontal = 16.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${activeChunk.title} • $remainingText",
+                                fontSize = if (compactMode) 12.sp else 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isMonochrome) Color.White else chunkColor,
+                                maxLines = 1
+                            )
+                        }
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (isMonochrome) Color(0x33FFFFFF) else chunkColor.copy(alpha = 0.16f))
-                            .border(
-                                width = 1.dp,
-                                color = if (isMonochrome) Color.White.copy(alpha = 0.60f) else chunkColor.copy(alpha = 0.40f),
-                                shape = RoundedCornerShape(16.dp)
+                    isToday && nextChunk != null -> {
+                        val minsUntil = if (nextChunk.startMinuteOfDay >= currentMinute) {
+                            nextChunk.startMinuteOfDay - currentMinute
+                        } else {
+                            (1440 - currentMinute) + nextChunk.startMinuteOfDay
+                        }
+                        val untilText = if (minsUntil >= 60) "${minsUntil / 60}h ${minsUntil % 60}m" else "${minsUntil}m"
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Color(0xFF131722))
+                                .border(1.dp, Color(0xFF283144), RoundedCornerShape(20.dp))
+                                .padding(horizontal = 14.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Next: ${nextChunk.title} • in $untilText",
+                                fontSize = if (compactMode) 11.5.sp else 12.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF38BDF8),
+                                maxLines = 1
                             )
-                            .padding(horizontal = 14.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${activeChunk.title} • ${remaining}m",
-                            fontSize = if (compactMode) 11.5.sp else 12.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isMonochrome) Color.White else chunkColor,
-                            maxLines = 1
-                        )
+                        }
                     }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(HyperSurfaceVariant)
-                            .border(
-                                width = 1.dp,
-                                color = Color(0xFF283042),
-                                shape = RoundedCornerShape(16.dp)
+
+                    !isToday && chunks.isNotEmpty() -> {
+                        val totalMins = chunks.sumOf { it.durationMinutes }
+                        val h = totalMins / 60
+                        val m = totalMins % 60
+                        val timeStr = if (h > 0 && m > 0) "${h}h ${m}m" else if (h > 0) "${h}h" else "${m}m"
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Color(0xFF131722))
+                                .border(1.dp, Color(0xFF283144), RoundedCornerShape(20.dp))
+                                .padding(horizontal = 14.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "$dayName • $timeStr planned",
+                                fontSize = if (compactMode) 11.5.sp else 12.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF38BDF8),
+                                maxLines = 1
                             )
-                            .padding(horizontal = 14.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Free Slot",
-                            fontSize = if (compactMode) 11.5.sp else 12.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextTertiary
-                        )
+                        }
+                    }
+
+                    chunks.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Color(0xFF131722))
+                                .border(1.dp, Color(0xFF232A3B), RoundedCornerShape(20.dp))
+                                .padding(horizontal = 14.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isToday) "Unscheduled • Tap + to Plan" else "$dayName • Tap + to Plan",
+                                fontSize = if (compactMode) 11.sp else 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF94A3B8),
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    else -> {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Color(0xFF131722))
+                                .border(1.dp, Color(0xFF232A3B), RoundedCornerShape(20.dp))
+                                .padding(horizontal = 14.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Free Slot • All Clear",
+                                fontSize = if (compactMode) 11.5.sp else 12.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF94A3B8),
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }

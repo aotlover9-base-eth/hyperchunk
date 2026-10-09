@@ -154,7 +154,7 @@ class ChunkRepository(private val context: Context) {
     }
 
     fun getCurrentAndNextChunk(dayOfWeek: Int, currentMinute: Int): Pair<TimeChunk?, TimeChunk?> {
-        val dayChunks = getChunksForDay(dayOfWeek)
+        val dayChunks = getChunksForDay(dayOfWeek).sortedBy { it.startMinuteOfDay }
         if (dayChunks.isEmpty()) return Pair(null, null)
 
         val active = dayChunks.firstOrNull { it.isCurrentlyActive(currentMinute) }
@@ -171,6 +171,130 @@ class ChunkRepository(private val context: Context) {
     fun clearAllChunks() {
         saveChunksToStorage(emptyList())
         _chunks.value = emptyList()
+    }
+
+    /**
+     * Copies all schedule chunks from a source day to a target day.
+     */
+    fun copySchedule(fromDay: Int, toDay: Int) {
+        val source = getChunksForDay(fromDay)
+        val filtered = _chunks.value.filterNot { it.dayOfWeek == toDay }.toMutableList()
+        val duplicated = source.map {
+            it.copy(
+                id = UUID.randomUUID().toString(),
+                dayOfWeek = toDay
+            )
+        }
+        filtered.addAll(duplicated)
+        saveChunksToStorage(filtered)
+        _chunks.value = filtered
+    }
+
+    /**
+     * Automatically identifies unscheduled intervals between 00:00 and 24:00 (1440 mins)
+     * and fills each gap >= 15 minutes with a rest/free time chunk.
+     */
+    fun fillUnscheduledGaps(
+        dayOfWeek: Int,
+        defaultTitle: String = "Free Time & Rest",
+        category: ChunkCategory = ChunkCategory.REST
+    ) {
+        val dayChunks = getChunksForDay(dayOfWeek).sortedBy { it.startMinuteOfDay }
+        val newGaps = mutableListOf<TimeChunk>()
+
+        var cursor = 0
+        for (chunk in dayChunks) {
+            val chunkStart = chunk.startMinuteOfDay
+            val chunkEnd = chunk.endMinuteOfDay
+
+            if (chunkEnd >= chunkStart) {
+                if (chunkStart > cursor && (chunkStart - cursor) >= 15) {
+                    newGaps.add(
+                        TimeChunk(
+                            id = UUID.randomUUID().toString(),
+                            dayOfWeek = dayOfWeek,
+                            title = defaultTitle,
+                            startMinuteOfDay = cursor,
+                            endMinuteOfDay = chunkStart,
+                            category = category,
+                            colorHex = category.defaultColor
+                        )
+                    )
+                }
+                cursor = maxOf(cursor, chunkEnd)
+            } else {
+                // Overnight chunk: spans chunkStart -> 1440
+                if (chunkStart > cursor && (chunkStart - cursor) >= 15) {
+                    newGaps.add(
+                        TimeChunk(
+                            id = UUID.randomUUID().toString(),
+                            dayOfWeek = dayOfWeek,
+                            title = defaultTitle,
+                            startMinuteOfDay = cursor,
+                            endMinuteOfDay = chunkStart,
+                            category = category,
+                            colorHex = category.defaultColor
+                        )
+                    )
+                }
+                cursor = 1440
+            }
+        }
+
+        if (cursor < 1440 && (1440 - cursor) >= 15) {
+            newGaps.add(
+                TimeChunk(
+                    id = UUID.randomUUID().toString(),
+                    dayOfWeek = dayOfWeek,
+                    title = defaultTitle,
+                    startMinuteOfDay = cursor,
+                    endMinuteOfDay = 1440,
+                    category = category,
+                    colorHex = category.defaultColor
+                )
+            )
+        }
+
+        if (newGaps.isNotEmpty()) {
+            val updated = _chunks.value.toMutableList()
+            updated.addAll(newGaps)
+            saveChunksToStorage(updated)
+            _chunks.value = updated
+        }
+    }
+
+    /**
+     * Computes the scheduled duration breakdown by category for a given day in minutes.
+     */
+    fun getCategoryBreakdownForDay(dayOfWeek: Int): Map<ChunkCategory, Int> {
+        val dayChunks = getChunksForDay(dayOfWeek)
+        val result = mutableMapOf<ChunkCategory, Int>()
+        for (chunk in dayChunks) {
+            result[chunk.category] = (result[chunk.category] ?: 0) + chunk.durationMinutes
+        }
+        return result
+    }
+
+    /**
+     * Exports all schedule chunks as JSON string.
+     */
+    fun exportScheduleJson(): String {
+        return gson.toJson(_chunks.value)
+    }
+
+    /**
+     * Imports schedule chunks from JSON string.
+     */
+    fun importScheduleJson(json: String): Boolean {
+        return try {
+            val type = object : TypeToken<List<TimeChunk>>() {}.type
+            val list: List<TimeChunk> = gson.fromJson(json, type) ?: return false
+            saveChunksToStorage(list)
+            _chunks.value = list
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     companion object {
