@@ -26,9 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -229,11 +232,9 @@ fun Chunk24hChronograph(
                     )
                 }
 
-                // 4. Rounded Capsule Arc Segments (StrokeCap.Round)
-                // Half-cap angular clearance calculation: capAngle = asin((strokePx/2) / radius) in degrees
-                val capRadiusRatio = (strokePx / 2f) / radius.coerceAtLeast(1f)
-                val capAngleDeg = (asin(capRadiusRatio.coerceIn(0f, 0.99f)) * (180f / PI.toFloat()))
-                val desiredGapDeg = 2.4f // Visible gap between adjacent rounded ends
+                // 4. Annular Segments with Subtle Corner Fillets ("A Little Curl")
+                val cornerRadiusPx = if (compactMode) 3.5.dp.toPx() else 4.2.dp.toPx()
+                val gapDeg = 1.8f // Clean dark cut gap between adjacent chunks
 
                 chunks.forEach { chunk ->
                     if (chunk.durationMinutes <= 0) return@forEach
@@ -246,45 +247,47 @@ fun Chunk24hChronograph(
                         parseHexColor(chunk.colorHex, appColors.primary)
                     }
 
-                    // Angular clearance: cap extends capAngleDeg beyond start and end
-                    val totalCapAllowance = (2f * capAngleDeg) + desiredGapDeg
-
-                    val (drawStart, drawSweep) = if (rawSweep > totalCapAllowance) {
-                        Pair(
-                            rawStartAngle + capAngleDeg + (desiredGapDeg / 2f),
-                            rawSweep - totalCapAllowance
-                        )
-                    } else {
-                        // For very small chunks, render a minimal rounded capsule centered at mid-slot
-                        val midAngle = rawStartAngle + (rawSweep / 2f)
-                        Pair(midAngle - 0.5f, 1.0f)
-                    }
-
                     val isActive = (activeChunk?.id == chunk.id) && isToday
 
-                    // Active chunk glowing back-aura
-                    if (isActive) {
+                    if (chunk.durationMinutes >= 1440) {
+                        // Full 24-hour continuous circle
                         drawArc(
-                            color = if (isMonochrome) Color.White.copy(alpha = 0.30f) else chunkColor.copy(alpha = 0.28f),
-                            startAngle = drawStart,
-                            sweepAngle = drawSweep,
+                            color = chunkColor,
+                            startAngle = 0f,
+                            sweepAngle = 360f,
                             useCenter = false,
-                            topLeft = Offset(centerOffset.x - (radius + 2.dp.toPx()), centerOffset.y - (radius + 2.dp.toPx())),
-                            size = Size((radius + 2.dp.toPx()) * 2f, (radius + 2.dp.toPx()) * 2f),
-                            style = Stroke(width = strokePx + 4.dp.toPx(), cap = StrokeCap.Round)
+                            topLeft = arcTopLeft,
+                            size = arcSize,
+                            style = Stroke(width = strokePx, cap = StrokeCap.Butt)
+                        )
+                    } else {
+                        val drawStart = rawStartAngle + (gapDeg / 2f)
+                        val drawSweep = (rawSweep - gapDeg).coerceAtLeast(0.4f)
+
+                        // Active chunk soft glowing back-halo
+                        if (isActive) {
+                            drawCurledAnnularSector(
+                                color = if (isMonochrome) Color.White.copy(alpha = 0.28f) else chunkColor.copy(alpha = 0.25f),
+                                center = centerOffset,
+                                innerRadius = innerRimRadius - 2.5.dp.toPx(),
+                                outerRadius = outerRimRadius + 2.5.dp.toPx(),
+                                startAngleDeg = drawStart,
+                                sweepAngleDeg = drawSweep,
+                                cornerRadiusPx = cornerRadiusPx + 1.dp.toPx()
+                            )
+                        }
+
+                        // Primary annular sector with subtly curled corners
+                        drawCurledAnnularSector(
+                            color = chunkColor,
+                            center = centerOffset,
+                            innerRadius = innerRimRadius,
+                            outerRadius = outerRimRadius,
+                            startAngleDeg = drawStart,
+                            sweepAngleDeg = drawSweep,
+                            cornerRadiusPx = cornerRadiusPx
                         )
                     }
-
-                    // Primary Segment Capsule with buttery smooth rounded caps
-                    drawArc(
-                        color = chunkColor,
-                        startAngle = drawStart,
-                        sweepAngle = drawSweep,
-                        useCenter = false,
-                        topLeft = arcTopLeft,
-                        size = arcSize,
-                        style = Stroke(width = strokePx, cap = StrokeCap.Round)
-                    )
                 }
 
                 // 5. Live Glowing Sun Sweep Bead Needle
@@ -476,4 +479,111 @@ fun Chunk24hChronograph(
             }
         }
     }
+}
+
+/**
+ * Draws an annular segment with subtly curled / rounded corners ("a little curl")
+ * rather than a giant semicircle cap. The radial cut edges remain crisp and mostly flat,
+ * with gentle corner fillets matching high-precision chronograph aesthetics.
+ */
+private fun DrawScope.drawCurledAnnularSector(
+    color: Color,
+    center: Offset,
+    innerRadius: Float,
+    outerRadius: Float,
+    startAngleDeg: Float,
+    sweepAngleDeg: Float,
+    cornerRadiusPx: Float
+) {
+    if (sweepAngleDeg <= 0.1f) return
+    val thickness = outerRadius - innerRadius
+    if (thickness <= 0.5f) return
+
+    val sweepRad = Math.toRadians(sweepAngleDeg.toDouble()).toFloat()
+    val maxDeltaRad = sweepRad / 2.05f
+
+    val deltaOut = (cornerRadiusPx / outerRadius).coerceAtMost(maxDeltaRad)
+    val deltaIn = (cornerRadiusPx / innerRadius).coerceAtMost(maxDeltaRad)
+    val rcClamped = cornerRadiusPx.coerceAtMost(thickness / 2.05f)
+
+    val startRad = Math.toRadians(startAngleDeg.toDouble()).toFloat()
+    val endRad = startRad + sweepRad
+
+    val path = Path()
+
+    // 1. Point on radial start ray below the outer corner fillet
+    val pStartRadOuter = Offset(
+        center.x + (outerRadius - rcClamped) * cos(startRad),
+        center.y + (outerRadius - rcClamped) * sin(startRad)
+    )
+    path.moveTo(pStartRadOuter.x, pStartRadOuter.y)
+
+    // Corner 1: Outer Start Corner Fillet
+    val pSharpOuterStart = Offset(
+        center.x + outerRadius * cos(startRad),
+        center.y + outerRadius * sin(startRad)
+    )
+    val pOuterArcStart = Offset(
+        center.x + outerRadius * cos(startRad + deltaOut),
+        center.y + outerRadius * sin(startRad + deltaOut)
+    )
+    path.quadraticBezierTo(pSharpOuterStart.x, pSharpOuterStart.y, pOuterArcStart.x, pOuterArcStart.y)
+
+    // Outer Arc
+    val outerRect = Rect(center.x - outerRadius, center.y - outerRadius, center.x + outerRadius, center.y + outerRadius)
+    val outerStartDeg = Math.toDegrees((startRad + deltaOut).toDouble()).toFloat()
+    val outerSweepDeg = Math.toDegrees((sweepRad - 2f * deltaOut).toDouble()).toFloat().coerceAtLeast(0.1f)
+    path.arcTo(outerRect, outerStartDeg, outerSweepDeg, false)
+
+    // Corner 2: Outer End Corner Fillet
+    val pSharpOuterEnd = Offset(
+        center.x + outerRadius * cos(endRad),
+        center.y + outerRadius * sin(endRad)
+    )
+    val pEndRadOuter = Offset(
+        center.x + (outerRadius - rcClamped) * cos(endRad),
+        center.y + (outerRadius - rcClamped) * sin(endRad)
+    )
+    path.quadraticBezierTo(pSharpOuterEnd.x, pSharpOuterEnd.y, pEndRadOuter.x, pEndRadOuter.y)
+
+    // Radial End Line
+    val pEndRadInner = Offset(
+        center.x + (innerRadius + rcClamped) * cos(endRad),
+        center.y + (innerRadius + rcClamped) * sin(endRad)
+    )
+    path.lineTo(pEndRadInner.x, pEndRadInner.y)
+
+    // Corner 3: Inner End Corner Fillet
+    val pSharpInnerEnd = Offset(
+        center.x + innerRadius * cos(endRad),
+        center.y + innerRadius * sin(endRad)
+    )
+    val pInnerArcEnd = Offset(
+        center.x + innerRadius * cos(endRad - deltaIn),
+        center.y + innerRadius * sin(endRad - deltaIn)
+    )
+    path.quadraticBezierTo(pSharpInnerEnd.x, pSharpInnerEnd.y, pInnerArcEnd.x, pInnerArcEnd.y)
+
+    // Inner Arc (sweeping counter-clockwise from end to start)
+    val innerRect = Rect(center.x - innerRadius, center.y - innerRadius, center.x + innerRadius, center.y + innerRadius)
+    val innerStartDeg = Math.toDegrees((endRad - deltaIn).toDouble()).toFloat()
+    val innerSweepDeg = -Math.toDegrees((sweepRad - 2f * deltaIn).toDouble()).toFloat().coerceAtMost(-0.1f)
+    path.arcTo(innerRect, innerStartDeg, innerSweepDeg, false)
+
+    // Corner 4: Inner Start Corner Fillet
+    val pSharpInnerStart = Offset(
+        center.x + innerRadius * cos(startRad),
+        center.y + innerRadius * sin(startRad)
+    )
+    val pStartRadInner = Offset(
+        center.x + (innerRadius + rcClamped) * cos(startRad),
+        center.y + (innerRadius + rcClamped) * sin(startRad)
+    )
+    path.quadraticBezierTo(pSharpInnerStart.x, pSharpInnerStart.y, pStartRadInner.x, pStartRadInner.y)
+
+    // Radial Start Line back to initial start point
+    path.lineTo(pStartRadOuter.x, pStartRadOuter.y)
+    path.close()
+
+    drawPath(path, color)
 }
