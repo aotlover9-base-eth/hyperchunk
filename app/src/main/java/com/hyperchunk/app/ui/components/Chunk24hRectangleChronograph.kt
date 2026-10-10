@@ -38,7 +38,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hyperchunk.app.data.model.PaletteMode
@@ -388,7 +387,7 @@ fun Chunk24hRectangleChronograph(
                 )
             }
 
-            // Center Digital Complication Readout
+            // Center Digital Time Readout (Clean & Centered)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -408,124 +407,11 @@ fun Chunk24hRectangleChronograph(
                 // Large Bold Digital Clock
                 Text(
                     text = formattedTime,
-                    fontSize = if (compactMode) 32.sp else 36.sp,
+                    fontSize = if (compactMode) 34.sp else 38.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White,
                     letterSpacing = 0.5.sp
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Sleek Capsule Pill Complication
-                when {
-                    isToday && activeChunk != null -> {
-                        val remaining = activeChunk.remainingMinutes(currentMinute)
-                        val chunkColor = if (isMonochrome) {
-                            Color.White
-                        } else {
-                            parseHexColor(activeChunk.colorHex, appColors.primary)
-                        }
-
-                        val remainingText = if (remaining >= 60) {
-                            "${remaining / 60}h ${remaining % 60}m"
-                        } else {
-                            "${remaining}m"
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFF131722))
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isMonochrome) Color.White.copy(alpha = 0.45f) else chunkColor.copy(alpha = 0.35f),
-                                    shape = RoundedCornerShape(20.dp)
-                                )
-                                .padding(horizontal = 16.dp, vertical = 7.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "${activeChunk.title} • $remainingText",
-                                fontSize = if (compactMode) 12.sp else 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isMonochrome) Color.White else chunkColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    isToday && nextChunk != null -> {
-                        val minsUntil = if (nextChunk.startMinuteOfDay >= currentMinute) {
-                            nextChunk.startMinuteOfDay - currentMinute
-                        } else {
-                            (1440 - currentMinute) + nextChunk.startMinuteOfDay
-                        }
-                        val untilText = if (minsUntil >= 60) "${minsUntil / 60}h ${minsUntil % 60}m" else "${minsUntil}m"
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFF131722))
-                                .border(1.dp, Color(0xFF283144), RoundedCornerShape(20.dp))
-                                .padding(horizontal = 14.dp, vertical = 7.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Next: ${nextChunk.title} • in $untilText",
-                                fontSize = if (compactMode) 11.5.sp else 12.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF38BDF8),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    chunks.isEmpty() -> {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFF131722))
-                                .border(1.dp, Color(0xFF232A3B), RoundedCornerShape(20.dp))
-                                .padding(horizontal = 14.dp, vertical = 7.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (isToday) "Unscheduled • Tap + to Plan" else "$dayName • Tap + to Plan",
-                                fontSize = if (compactMode) 11.sp else 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF94A3B8),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    isToday -> {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFF131722))
-                                .border(1.dp, Color(0xFF232A3B), RoundedCornerShape(20.dp))
-                                .padding(horizontal = 14.dp, vertical = 7.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Free Slot • All Clear",
-                                fontSize = if (compactMode) 11.5.sp else 12.5.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF94A3B8),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    else -> {
-                        // Empty when viewing another day
-                    }
-                }
             }
         }
     }
