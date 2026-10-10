@@ -47,6 +47,7 @@ import com.hyperchunk.app.ui.theme.LocalAppThemeColors
 import com.hyperchunk.app.ui.theme.parseHexColor
 import kotlin.math.PI
 import kotlin.math.asin
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -415,29 +416,6 @@ fun Chunk24hChronograph(
                         }
                     }
 
-                    !isToday && chunks.isNotEmpty() -> {
-                        val totalMins = chunks.sumOf { it.durationMinutes }
-                        val h = totalMins / 60
-                        val m = totalMins % 60
-                        val timeStr = if (h > 0 && m > 0) "${h}h ${m}m" else if (h > 0) "${h}h" else "${m}m"
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFF131722))
-                                .border(1.dp, Color(0xFF283144), RoundedCornerShape(20.dp))
-                                .padding(horizontal = 14.dp, vertical = 7.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "$dayName • $timeStr planned",
-                                fontSize = if (compactMode) 11.5.sp else 12.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF38BDF8),
-                                maxLines = 1
-                            )
-                        }
-                    }
-
                     chunks.isEmpty() -> {
                         Box(
                             modifier = Modifier
@@ -457,7 +435,7 @@ fun Chunk24hChronograph(
                         }
                     }
 
-                    else -> {
+                    isToday -> {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(20.dp))
@@ -474,6 +452,10 @@ fun Chunk24hChronograph(
                                 maxLines = 1
                             )
                         }
+                    }
+
+                    else -> {
+                        // Empty: when viewing another day with scheduled chunks, leave dial center clean with no pill
                     }
                 }
             }
@@ -529,11 +511,18 @@ private fun DrawScope.drawCurledAnnularSector(
     )
     path.quadraticBezierTo(pSharpOuterStart.x, pSharpOuterStart.y, pOuterArcStart.x, pOuterArcStart.y)
 
-    // Outer Arc
-    val outerRect = Rect(center.x - outerRadius, center.y - outerRadius, center.x + outerRadius, center.y + outerRadius)
-    val outerStartDeg = Math.toDegrees((startRad + deltaOut).toDouble()).toFloat()
-    val outerSweepDeg = Math.toDegrees((sweepRad - 2f * deltaOut).toDouble()).toFloat().coerceAtLeast(0.1f)
-    path.arcTo(outerRect, outerStartDeg, outerSweepDeg, false)
+    // Outer Arc: smoothly follow outerRadius circle clockwise
+    val outerSpanRad = (endRad - deltaOut) - (startRad + deltaOut)
+    if (outerSpanRad > 0f) {
+        val outerSteps = ceil(Math.toDegrees(outerSpanRad.toDouble())).toInt().coerceAtLeast(1)
+        for (i in 1..outerSteps) {
+            val ang = (startRad + deltaOut) + (i.toFloat() / outerSteps) * outerSpanRad
+            path.lineTo(
+                center.x + outerRadius * cos(ang),
+                center.y + outerRadius * sin(ang)
+            )
+        }
+    }
 
     // Corner 2: Outer End Corner Fillet
     val pSharpOuterEnd = Offset(
@@ -564,11 +553,18 @@ private fun DrawScope.drawCurledAnnularSector(
     )
     path.quadraticBezierTo(pSharpInnerEnd.x, pSharpInnerEnd.y, pInnerArcEnd.x, pInnerArcEnd.y)
 
-    // Inner Arc (sweeping counter-clockwise from end to start)
-    val innerRect = Rect(center.x - innerRadius, center.y - innerRadius, center.x + innerRadius, center.y + innerRadius)
-    val innerStartDeg = Math.toDegrees((endRad - deltaIn).toDouble()).toFloat()
-    val innerSweepDeg = -Math.toDegrees((sweepRad - 2f * deltaIn).toDouble()).toFloat().coerceAtMost(-0.1f)
-    path.arcTo(innerRect, innerStartDeg, innerSweepDeg, false)
+    // Inner Arc: smoothly follow innerRadius circle counter-clockwise without inward bulging
+    val innerSpanRad = (endRad - deltaIn) - (startRad + deltaIn)
+    if (innerSpanRad > 0f) {
+        val innerSteps = ceil(Math.toDegrees(innerSpanRad.toDouble())).toInt().coerceAtLeast(1)
+        for (i in 1..innerSteps) {
+            val ang = (endRad - deltaIn) - (i.toFloat() / innerSteps) * innerSpanRad
+            path.lineTo(
+                center.x + innerRadius * cos(ang),
+                center.y + innerRadius * sin(ang)
+            )
+        }
+    }
 
     // Corner 4: Inner Start Corner Fillet
     val pSharpInnerStart = Offset(
