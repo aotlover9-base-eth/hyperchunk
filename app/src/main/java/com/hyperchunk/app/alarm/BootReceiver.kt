@@ -10,6 +10,7 @@ class BootReceiver : BroadcastReceiver() {
             intent.action == "android.intent.action.QUICKBOOT_POWERON"
         ) {
             AlarmScheduler.rescheduleAllAlarms(context)
+            com.hyperchunk.app.widget.HyperChunkWidgetProvider.updateAllWidgets(context)
         }
     }
 }
