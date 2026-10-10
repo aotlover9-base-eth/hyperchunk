@@ -532,5 +532,44 @@ class StressTest {
         assertTrue("On-time wakeup within 5 mins is valid", isWindowValid(onTimeMinute, scheduledMinute))
         assertFalse("Stale delayed wakeup after 2 hours must be suppressed", isWindowValid(staleMinute, scheduledMinute))
     }
+
+    @Test
+    fun testDynamicIconAliasesAndMapping() {
+        val aliases = com.hyperchunk.app.data.storage.DynamicIconManager.ALIASES
+        assertEquals(7, aliases.size)
+        assertTrue(aliases.contains("com.hyperchunk.app.MainActivityRoseCrimson"))
+        assertTrue(aliases.contains("com.hyperchunk.app.MainActivityPixelBlue"))
+        assertTrue(aliases.contains("com.hyperchunk.app.MainActivityCyberCyan"))
+        assertTrue(aliases.contains("com.hyperchunk.app.MainActivityElectricLime"))
+        assertTrue(aliases.contains("com.hyperchunk.app.MainActivityAmethystViolet"))
+        assertTrue(aliases.contains("com.hyperchunk.app.MainActivitySunsetAmber"))
+        assertTrue(aliases.contains("com.hyperchunk.app.MainActivityMonochrome"))
+
+        // Test alias selection logic for colorful mode
+        AccentTheme.values().forEach { theme ->
+            val expectedAlias = when (theme) {
+                AccentTheme.ROSE_CRIMSON -> "com.hyperchunk.app.MainActivityRoseCrimson"
+                AccentTheme.PIXEL_BLUE -> "com.hyperchunk.app.MainActivityPixelBlue"
+                AccentTheme.CYBER_CYAN -> "com.hyperchunk.app.MainActivityCyberCyan"
+                AccentTheme.ELECTRIC_LIME -> "com.hyperchunk.app.MainActivityElectricLime"
+                AccentTheme.AMETHYST_VIOLET -> "com.hyperchunk.app.MainActivityAmethystViolet"
+                AccentTheme.SUNSET_AMBER -> "com.hyperchunk.app.MainActivitySunsetAmber"
+            }
+            assertTrue(aliases.contains(expectedAlias))
+        }
+    }
+
+    @Test
+    fun testAllAccentThemesHaveValidHexAndComposeColors() {
+        AccentTheme.values().forEach { theme ->
+            val hex = theme.colorHex
+            assertTrue(hex.startsWith("#"))
+            assertEquals(7, hex.length)
+            val parsed = parseHexColor(hex, Color.Red)
+            assertNotNull(parsed)
+            assertNotNull(theme.composeColor)
+        }
+    }
 }
+
 
