@@ -186,14 +186,32 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             // 24-Hour Perimeter Color Edge Ring
             val todayChunks = repo.getChunksForDay(dayOfWeek)
             val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
-            val minW = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 260) ?: 260
-            val minH = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 130) ?: 130
+            val isPortrait = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+            val minW = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0) ?: 0
+            val maxW = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0) ?: 0
+            val minH = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0) ?: 0
+            val maxH = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0) ?: 0
+
+            val widthDp = when {
+                isPortrait && minW > 0 -> minW.toFloat()
+                !isPortrait && maxW > 0 -> maxW.toFloat()
+                minW > 0 -> minW.toFloat()
+                else -> 320f
+            }
+
+            val heightDp = when {
+                isPortrait && minH > 0 -> minH.toFloat()
+                !isPortrait && minH > 0 -> minH.toFloat()
+                maxH > 0 -> (maxH * 0.75f)
+                else -> 110f
+            }
+
             val ringBitmap = renderEdgeRingBitmap(
                 context = context,
                 chunks = todayChunks,
                 currentMinute = currentMinute,
-                widthDp = if (minW > 0) minW else 260,
-                heightDp = if (minH > 0) minH else 130,
+                widthDp = widthDp,
+                heightDp = heightDp,
                 isMonochrome = isMonochrome
             )
             if (ringBitmap != null) {
@@ -211,39 +229,50 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             context: Context,
             chunks: List<TimeChunk>,
             currentMinute: Int,
-            widthDp: Int,
-            heightDp: Int,
+            widthDp: Float,
+            heightDp: Float,
             isMonochrome: Boolean
         ): Bitmap? {
             try {
-                val density = context.resources.displayMetrics.density
-                val w = (widthDp * 1.5f).toInt().coerceIn(360, 640)
-                val h = (heightDp * 1.5f).toInt().coerceIn(180, 360)
+                val aspectRatio = (widthDp / heightDp).coerceIn(1.8f, 4.5f)
+                val w = 720
+                val h = (w / aspectRatio).toInt().coerceIn(160, 400)
 
                 val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(bitmap)
 
-                val strokeWidth = 3.5f * density
-                val cornerRadius = 28f * density
-                val inset = strokeWidth / 2f + 1.5f * density
+                // Density scale relative to DP
+                val densityScale = w.toFloat() / widthDp
+                val strokeWidthPx = 3.5f * densityScale
+                val cornerRadiusPx = 18f * densityScale
+                val inset = strokeWidthPx / 2f + 1.2f * densityScale
 
                 val x0 = inset
                 val y0 = inset
-                val x1 = w - inset
-                val y1 = h - inset
-                val r = (cornerRadius - inset).coerceAtLeast(4f)
+                val x1 = w.toFloat() - inset
+                val y1 = h.toFloat() - inset
+                val r = (cornerRadiusPx - inset).coerceAtLeast(4f)
                 val cx = w / 2f
 
                 val path = Path().apply {
                     moveTo(cx, y0)
+                    // Top straight edge
                     lineTo(x1 - r, y0)
-                    arcTo(RectF(x1 - 2 * r, y0, x1, y0 + 2 * r), -90f, 90f)
+                    // Top-right corner
+                    arcTo(RectF(x1 - 2f * r, y0, x1, y0 + 2f * r), -90f, 90f)
+                    // Right straight edge (straight line along the right border)
                     lineTo(x1, y1 - r)
-                    arcTo(RectF(x1 - 2 * r, y1 - 2 * r, x1, y1), 0f, 90f)
+                    // Bottom-right corner
+                    arcTo(RectF(x1 - 2f * r, y1 - 2f * r, x1, y1), 0f, 90f)
+                    // Bottom straight edge
                     lineTo(x0 + r, y1)
-                    arcTo(RectF(x0, y1 - 2 * r, x0 + 2 * r, y1), 90f, 90f)
+                    // Bottom-left corner
+                    arcTo(RectF(x0, y1 - 2f * r, x0 + 2f * r, y1), 90f, 90f)
+                    // Left straight edge (straight line along the left border)
                     lineTo(x0, y0 + r)
-                    arcTo(RectF(x0, y0, x0 + 2 * r, y0 + 2 * r), 180f, 90f)
+                    // Top-left corner
+                    arcTo(RectF(x0, y0, x0 + 2f * r, y0 + 2f * r), 180f, 90f)
+                    // Back to top center
                     lineTo(cx, y0)
                     close()
                 }
@@ -255,14 +284,14 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                 // 1. Subtle dark background track
                 val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     style = Paint.Style.STROKE
-                    this.strokeWidth = strokeWidth
+                    this.strokeWidth = strokeWidthPx
                     strokeCap = Paint.Cap.ROUND
                     color = 0x22FFFFFF // translucent subtle guide track
                 }
                 canvas.drawPath(path, bgPaint)
 
                 // 2. Chunks along the perimeter
-                val gap = 2f * density
+                val gap = 2f * densityScale
                 chunks.forEach { chunk ->
                     if (chunk.durationMinutes <= 0) return@forEach
                     val startDist = (chunk.startMinuteOfDay / 1440f) * totalLength
@@ -284,7 +313,7 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
 
                     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                         style = Paint.Style.STROKE
-                        this.strokeWidth = strokeWidth
+                        this.strokeWidth = strokeWidthPx
                         strokeCap = Paint.Cap.ROUND
                         color = chunkColorInt
                     }
@@ -318,13 +347,13 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                     style = Paint.Style.FILL
                     color = 0x66FFFFFF
                 }
-                canvas.drawCircle(pos[0], pos[1], strokeWidth * 1.6f, glowPaint)
+                canvas.drawCircle(pos[0], pos[1], strokeWidthPx * 1.6f, glowPaint)
 
                 val beadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     style = Paint.Style.FILL
                     color = Color.WHITE
                 }
-                canvas.drawCircle(pos[0], pos[1], strokeWidth * 0.85f, beadPaint)
+                canvas.drawCircle(pos[0], pos[1], strokeWidthPx * 0.85f, beadPaint)
 
                 return bitmap
             } catch (e: Exception) {
