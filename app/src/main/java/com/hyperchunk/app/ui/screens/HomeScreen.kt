@@ -253,88 +253,93 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     // Custom Chrono Logo Box
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(14.dp))
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(appColors.surfaceElevated)
-                            .border(1.dp, appColors.border, RoundedCornerShape(14.dp)),
+                            .border(1.dp, appColors.border, RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         HyperChronoLogo(
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(24.dp),
                             color = appColors.primary
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(9.dp))
 
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "HYPERCHUNK",
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Black,
                                 color = appColors.primary,
-                                letterSpacing = 1.4.sp
+                                letterSpacing = 1.2.sp
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(5.dp))
                                     .background(appColors.surfaceElevated)
-                                    .padding(horizontal = 5.dp, vertical = 1.5.dp)
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
                             ) {
                                 Text(
                                     text = "24H",
-                                    fontSize = 9.sp,
+                                    fontSize = 8.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = TextTertiary,
-                                    letterSpacing = 0.8.sp
+                                    letterSpacing = 0.6.sp
                                 )
                             }
                         }
                         Text(
-                            text = "24-Hour Time Planner",
-                            fontSize = 19.sp,
+                            text = "Time Planner",
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = TextPrimary,
-                            letterSpacing = (-0.3).sp
+                            letterSpacing = (-0.2).sp
                         )
                     }
                 }
 
+                Spacer(modifier = Modifier.width(6.dp))
+
                 // Header Action Buttons (Routines, Reset Day & Settings)
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Routines Hub Button
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(14.dp))
                             .background(appColors.surface)
-                            .border(1.dp, appColors.border, RoundedCornerShape(16.dp))
+                            .border(1.dp, appColors.border, RoundedCornerShape(14.dp))
                             .clickable { showRoutineHubSheet = true }
-                            .padding(horizontal = 11.dp, vertical = 9.dp)
+                            .padding(horizontal = 9.dp, vertical = 8.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.Tune,
                                 contentDescription = "Routines",
                                 tint = appColors.primary,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(15.dp)
                             )
-                            Spacer(modifier = Modifier.width(5.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Routines",
-                                fontSize = 12.sp,
+                                fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
@@ -344,28 +349,28 @@ fun HomeScreen(
                     // Reset Day Button (adjacent to Routines)
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(16.dp))
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(14.dp))
                             .background(appColors.surface)
-                            .border(1.dp, appColors.border, RoundedCornerShape(16.dp))
+                            .border(1.dp, appColors.border, RoundedCornerShape(14.dp))
                             .clickable { showResetDayConfirmDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.RestartAlt,
                             contentDescription = "Reset Day",
-                            tint = appColors.primary,
-                            modifier = Modifier.size(18.dp)
+                            tint = Color(0xFFEF4444),
+                            modifier = Modifier.size(17.dp)
                         )
                     }
 
                     // Settings Button
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(16.dp))
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(14.dp))
                             .background(appColors.surface)
-                            .border(1.dp, appColors.border, RoundedCornerShape(16.dp))
+                            .border(1.dp, appColors.border, RoundedCornerShape(14.dp))
                             .clickable { showSettingsSheet = true },
                         contentAlignment = Alignment.Center
                     ) {
@@ -373,7 +378,7 @@ fun HomeScreen(
                             Icons.Default.Settings,
                             contentDescription = "Settings",
                             tint = appColors.primary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
                 }
