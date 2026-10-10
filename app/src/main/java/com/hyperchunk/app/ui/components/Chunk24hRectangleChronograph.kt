@@ -38,6 +38,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hyperchunk.app.data.model.PaletteMode
@@ -104,33 +105,33 @@ fun Chunk24hRectangleChronograph(
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
             .background(appColors.surface)
-            .padding(vertical = if (compactMode) 12.dp else 16.dp),
+            .padding(vertical = if (compactMode) 14.dp else 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        val dialSize = if (compactMode) 262.dp else 288.dp
+        val dialHeight = if (compactMode) 205.dp else 225.dp
         Box(
             modifier = Modifier
-                .size(dialSize)
-                .padding(2.dp),
+                .fillMaxWidth()
+                .height(dialHeight)
+                .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val minDim = size.minDimension
-                val centerOffset = Offset(size.width / 2f, size.height / 2f)
+                if (size.width <= 0f || size.height <= 0f) return@Canvas
+                val strokePx = if (compactMode) 16.dp.toPx() else 18.dp.toPx()
+                val sidePadding = 4.dp.toPx()
+                val topBottomPadding = 4.dp.toPx()
 
-                val strokePx = if (compactMode) 17.dp.toPx() else 20.dp.toPx()
-                val outerLabelPadding = if (compactMode) 11.dp.toPx() else 13.dp.toPx()
+                // Widescreen rectangle track bounds spreading across the full width to both borders
+                val trackWidth = (size.width - strokePx - sidePadding * 2f).coerceAtLeast(20f)
+                val trackHeight = (size.height - strokePx - topBottomPadding * 2f).coerceAtLeast(20f)
+                val cornerR = 22.dp.toPx().coerceAtMost(minOf(trackWidth, trackHeight) / 2f)
 
-                // Squircle track bounds
-                val trackWidth = minDim - outerLabelPadding * 2f - strokePx - 10.dp.toPx()
-                val trackHeight = trackWidth
-                val cornerR = (trackWidth * 0.32f).coerceAtLeast(28.dp.toPx())
-
-                val x0 = centerOffset.x - trackWidth / 2f
-                val y0 = centerOffset.y - trackHeight / 2f
-                val x1 = centerOffset.x + trackWidth / 2f
-                val y1 = centerOffset.y + trackHeight / 2f
-                val cx = centerOffset.x
+                val x0 = (size.width - trackWidth) / 2f
+                val y0 = (size.height - trackHeight) / 2f
+                val x1 = x0 + trackWidth
+                val y1 = y0 + trackHeight
+                val cx = size.width / 2f
 
                 // Build closed squircle perimeter path starting at Top Center (12 AM)
                 val trackPath = Path().apply {
@@ -189,24 +190,23 @@ fun Chunk24hRectangleChronograph(
                 )
 
                 // Subtle inner & outer track boundary guide lines
-                val innerOffset = strokePx / 2f
-                val outerOffset = strokePx / 2f
+                val halfStroke = strokePx / 2f
                 drawRoundRect(
                     color = Color(0xFF1E2536),
-                    topLeft = Offset(x0 - outerOffset, y0 - outerOffset),
+                    topLeft = Offset(x0 - halfStroke, y0 - halfStroke),
                     size = Size(trackWidth + strokePx, trackHeight + strokePx),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerR + outerOffset),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius((cornerR + halfStroke).coerceAtLeast(0f)),
                     style = Stroke(width = 0.8.dp.toPx())
                 )
                 drawRoundRect(
                     color = Color(0xFF1E2536),
-                    topLeft = Offset(x0 + innerOffset, y0 + innerOffset),
+                    topLeft = Offset(x0 + halfStroke, y0 + halfStroke),
                     size = Size(trackWidth - strokePx, trackHeight - strokePx),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius((cornerR - innerOffset).coerceAtLeast(4f)),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius((cornerR - halfStroke).coerceAtLeast(4f)),
                     style = Stroke(width = 0.8.dp.toPx())
                 )
 
-                // 2. Cardinal Octant Tick Marks & Outer Labels
+                // 2. Cardinal Octant Tick Marks & Inner Labels
                 val cardinalHours = listOf(
                     0 to "12 AM",
                     3 to "3 AM",
@@ -219,7 +219,7 @@ fun Chunk24hRectangleChronograph(
                 )
 
                 val labelStyle = TextStyle(
-                    fontSize = if (compactMode) 10.sp else 11.sp,
+                    fontSize = if (compactMode) 9.5.sp else 10.5.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFE2E8F0)
                 )
@@ -230,36 +230,35 @@ fun Chunk24hRectangleChronograph(
                     val pos = pathMeasure.getPosition(dist)
                     val tangent = pathMeasure.getTangent(dist)
 
-                    // Outward normal vector perpendicular to track tangent
-                    val normal = Offset(-tangent.y, tangent.x)
+                    val inwardNormal = Offset(-tangent.y, tangent.x)
+                    val outwardNormal = Offset(tangent.y, -tangent.x)
 
-                    // Outer label position
-                    val labelDist = (strokePx / 2f) + (if (compactMode) 12.dp.toPx() else 14.dp.toPx())
-                    val labelCenter = pos + normal * labelDist
+                    // Inner label position along inward normal from track
+                    val labelDist = (strokePx / 2f) + (if (compactMode) 13.dp.toPx() else 15.dp.toPx())
+                    val labelCenter = pos + inwardNormal * labelDist
 
                     val textLayout = textMeasurer.measure(labelText, labelStyle)
+                    val textLeft = (labelCenter.x - textLayout.size.width / 2f).coerceIn(4f, size.width - textLayout.size.width - 4f)
+                    val textTop = (labelCenter.y - textLayout.size.height / 2f).coerceIn(4f, size.height - textLayout.size.height - 4f)
                     drawText(
                         textLayoutResult = textLayout,
-                        topLeft = Offset(
-                            labelCenter.x - textLayout.size.width / 2f,
-                            labelCenter.y - textLayout.size.height / 2f
-                        )
+                        topLeft = Offset(textLeft, textTop)
                     )
 
-                    // Outer Radial Tick
-                    val tickOuterStart = pos + normal * (strokePx / 2f)
-                    val tickOuterEnd = pos + normal * ((strokePx / 2f) + 5.dp.toPx())
+                    // Outer Radial Tick Accent
+                    val tickOuterStart = pos + outwardNormal * (strokePx / 2f)
+                    val tickOuterEnd = pos + outwardNormal * ((strokePx / 2f) + 2.5.dp.toPx())
                     drawLine(
-                        color = Color.White,
+                        color = Color.White.copy(alpha = 0.65f),
                         start = tickOuterStart,
                         end = tickOuterEnd,
-                        strokeWidth = 2.dp.toPx(),
+                        strokeWidth = 1.6.dp.toPx(),
                         cap = StrokeCap.Round
                     )
 
                     // Inner Radial Tick
-                    val tickInnerStart = pos - normal * (strokePx / 2f)
-                    val tickInnerEnd = pos - normal * ((strokePx / 2f) + 5.dp.toPx())
+                    val tickInnerStart = pos + inwardNormal * (strokePx / 2f)
+                    val tickInnerEnd = pos + inwardNormal * ((strokePx / 2f) + 4.5.dp.toPx())
                     drawLine(
                         color = Color.White,
                         start = tickInnerStart,
@@ -275,10 +274,10 @@ fun Chunk24hRectangleChronograph(
                     val dist = (h / 24f) * totalLength
                     val pos = pathMeasure.getPosition(dist)
                     val tangent = pathMeasure.getTangent(dist)
-                    val normal = Offset(-tangent.y, tangent.x)
+                    val inwardNormal = Offset(-tangent.y, tangent.x)
 
-                    val subInnerStart = pos - normal * (strokePx / 2f)
-                    val subInnerEnd = pos - normal * ((strokePx / 2f) + 3.dp.toPx())
+                    val subInnerStart = pos + inwardNormal * (strokePx / 2f)
+                    val subInnerEnd = pos + inwardNormal * ((strokePx / 2f) + 2.8.dp.toPx())
                     drawLine(
                         color = Color(0xFF2C374C),
                         start = subInnerStart,
@@ -450,7 +449,8 @@ fun Chunk24hRectangleChronograph(
                                 fontSize = if (compactMode) 12.sp else 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (isMonochrome) Color.White else chunkColor,
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -476,7 +476,8 @@ fun Chunk24hRectangleChronograph(
                                 fontSize = if (compactMode) 11.5.sp else 12.5.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF38BDF8),
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -495,7 +496,8 @@ fun Chunk24hRectangleChronograph(
                                 fontSize = if (compactMode) 11.sp else 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF94A3B8),
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -514,7 +516,8 @@ fun Chunk24hRectangleChronograph(
                                 fontSize = if (compactMode) 11.5.sp else 12.5.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF94A3B8),
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
