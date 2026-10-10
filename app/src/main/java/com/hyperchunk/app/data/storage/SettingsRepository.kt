@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class SettingsRepository(context: Context) {
+class SettingsRepository(private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -60,6 +60,9 @@ class SettingsRepository(context: Context) {
             .putString(KEY_CLOCK_SHAPE, newSettings.clockShape.id)
             .apply()
         _settings.value = newSettings
+        try {
+            com.hyperchunk.app.widget.HyperChunkWidgetProvider.updateAllWidgets(context)
+        } catch (_: Exception) {}
     }
 
     fun updateFontScale(scale: Float) {

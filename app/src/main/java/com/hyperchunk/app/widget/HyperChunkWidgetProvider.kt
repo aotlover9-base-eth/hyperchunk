@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -13,12 +14,14 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PathMeasure
 import android.graphics.RectF
+import android.os.Build
 import android.os.Bundle
 import android.widget.RemoteViews
 import com.hyperchunk.app.MainActivity
 import com.hyperchunk.app.R
 import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.data.model.TimeChunk
+import com.hyperchunk.app.data.model.toMonochromeColor
 import com.hyperchunk.app.data.storage.ChunkRepository
 import com.hyperchunk.app.data.storage.SettingsRepository
 import java.util.Calendar
@@ -66,6 +69,52 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             }
         }
 
+        private fun composeColorToArgb(color: androidx.compose.ui.graphics.Color): Int {
+            val a = (color.alpha * 255f).toInt().coerceIn(0, 255)
+            val r = (color.red * 255f).toInt().coerceIn(0, 255)
+            val g = (color.green * 255f).toInt().coerceIn(0, 255)
+            val b = (color.blue * 255f).toInt().coerceIn(0, 255)
+            return Color.argb(a, r, g, b)
+        }
+
+        private fun createWidgetIconBitmap(accentColorInt: Int): Bitmap {
+            val sizePx = 64
+            val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val cx = sizePx / 2f
+            val cy = sizePx / 2f
+            val radius = sizePx * 0.44f
+
+            // Outer ring tinted with accent/theme color
+            val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+                color = accentColorInt
+            }
+            canvas.drawCircle(cx, cy, radius, ringPaint)
+
+            // Inner dark center
+            val innerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+                color = 0xFF151A24.toInt()
+            }
+            canvas.drawCircle(cx, cy, radius * 0.58f, innerPaint)
+
+            // Crisp white clock hands
+            val handPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 3.2f
+                strokeCap = Paint.Cap.ROUND
+                color = Color.WHITE
+            }
+            val handPath = Path().apply {
+                moveTo(cx, cy - radius * 0.42f)
+                lineTo(cx, cy)
+                lineTo(cx + radius * 0.35f, cy)
+            }
+            canvas.drawPath(handPath, handPaint)
+            return bitmap
+        }
+
         private fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
@@ -89,6 +138,27 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_time_row, pendingIntent)
             views.setOnClickPendingIntent(R.id.widget_next_task, pendingIntent)
 
+            // Sync with current app settings
+            val settings = try {
+                SettingsRepository(context).settings.value
+            } catch (_: Exception) {
+                com.hyperchunk.app.data.model.AppSettings()
+            }
+            val isMonochrome = (settings.paletteMode == PaletteMode.MONOCHROME)
+            val accentColorInt = try {
+                Color.parseColor(settings.accentTheme.colorHex)
+            } catch (_: Exception) {
+                0xFFF43F5E.toInt()
+            }
+
+            // Sync Header: Title and Dot Icon
+            val headerColor = if (isMonochrome) Color.WHITE else accentColorInt
+            views.setTextViewText(R.id.widget_app_title, "HYPERCHUNK")
+            views.setTextColor(R.id.widget_app_title, headerColor)
+            try {
+                views.setImageViewBitmap(R.id.widget_icon, createWidgetIconBitmap(headerColor))
+            } catch (_: Exception) {}
+
             // Calculate current day and minute
             val cal = Calendar.getInstance()
             val dayOfWeek = when (cal.get(Calendar.DAY_OF_WEEK)) {
@@ -106,15 +176,22 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             val repo = ChunkRepository(context)
             val (activeChunk, nextChunk) = repo.getCurrentAndNextChunk(dayOfWeek, currentMinute)
 
-            val isMonochrome = try {
-                SettingsRepository(context).settings.value.paletteMode == PaletteMode.MONOCHROME
-            } catch (_: Exception) {
-                false
-            }
+            val activeGlowColorInt: Int
 
             if (activeChunk != null) {
+                val activeChunkColorInt = if (isMonochrome) {
+                    composeColorToArgb(activeChunk.toMonochromeColor())
+                } else {
+                    try {
+                        Color.parseColor(activeChunk.colorHex)
+                    } catch (_: Exception) {
+                        accentColorInt
+                    }
+                }
+                activeGlowColorInt = activeChunkColorInt
+
                 views.setTextViewText(R.id.widget_status_pill, "NOW ACTIVE")
-                views.setTextColor(R.id.widget_status_pill, if (isMonochrome) 0xFFFFFFFF.toInt() else 0xFFA8FF78.toInt())
+                views.setTextColor(R.id.widget_status_pill, activeChunkColorInt)
                 views.setTextViewText(R.id.widget_task_title, activeChunk.title)
                 views.setTextViewText(
                     R.id.widget_task_time,
@@ -127,12 +204,17 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                     "${remaining}m left"
                 }
                 views.setTextViewText(R.id.widget_time_remaining, remainingStr)
-                if (isMonochrome) {
-                    views.setTextColor(R.id.widget_time_remaining, 0xFFE2E8F0.toInt())
-                }
+                views.setTextColor(R.id.widget_time_remaining, activeChunkColorInt)
 
                 val progressPercent = (activeChunk.progress(currentMinute) * 100).toInt().coerceIn(0, 100)
                 views.setProgressBar(R.id.widget_progress, 100, progressPercent, false)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    views.setColorStateList(
+                        R.id.widget_progress,
+                        "setProgressTintList",
+                        ColorStateList.valueOf(activeChunkColorInt)
+                    )
+                }
 
                 if (nextChunk != null) {
                     views.setTextViewText(
@@ -143,9 +225,19 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                     views.setTextViewText(R.id.widget_next_task, "Last chunk scheduled today")
                 }
             } else if (nextChunk != null) {
-                // There is an upcoming chunk today
+                val nextChunkColorInt = if (isMonochrome) {
+                    composeColorToArgb(nextChunk.toMonochromeColor())
+                } else {
+                    try {
+                        Color.parseColor(nextChunk.colorHex)
+                    } catch (_: Exception) {
+                        accentColorInt
+                    }
+                }
+                activeGlowColorInt = nextChunkColorInt
+
                 views.setTextViewText(R.id.widget_status_pill, "UPCOMING")
-                views.setTextColor(R.id.widget_status_pill, if (isMonochrome) 0xFFCBD5E1.toInt() else 0xFF00F2FE.toInt())
+                views.setTextColor(R.id.widget_status_pill, nextChunkColorInt)
                 views.setTextViewText(R.id.widget_task_title, nextChunk.title)
                 views.setTextViewText(
                     R.id.widget_task_time,
@@ -162,9 +254,16 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                     "Starts in ${minsUntil}m"
                 }
                 views.setTextViewText(R.id.widget_time_remaining, untilStr)
+                views.setTextColor(R.id.widget_time_remaining, nextChunkColorInt)
                 views.setProgressBar(R.id.widget_progress, 100, 0, false)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    views.setColorStateList(
+                        R.id.widget_progress,
+                        "setProgressTintList",
+                        ColorStateList.valueOf(nextChunkColorInt)
+                    )
+                }
 
-                // Check if there is another chunk after nextChunk
                 val laterChunks = repo.getChunksForDay(dayOfWeek).filter { it.startMinuteOfDay >= nextChunk.endMinuteOfDay }
                 if (laterChunks.isNotEmpty()) {
                     val after = laterChunks.first()
@@ -173,13 +272,23 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                     views.setTextViewText(R.id.widget_next_task, "Upcoming on today's schedule")
                 }
             } else {
-                // No active or upcoming chunks
+                activeGlowColorInt = accentColorInt
+                val mutedColor = 0xFF8E9BAE.toInt()
+
                 views.setTextViewText(R.id.widget_status_pill, "ALL CLEAR")
-                views.setTextColor(R.id.widget_status_pill, 0xFF8E9BAE.toInt())
+                views.setTextColor(R.id.widget_status_pill, mutedColor)
                 views.setTextViewText(R.id.widget_task_title, "No Chunks Right Now")
                 views.setTextViewText(R.id.widget_task_time, "Tap to plan your schedule")
                 views.setTextViewText(R.id.widget_time_remaining, "—")
+                views.setTextColor(R.id.widget_time_remaining, mutedColor)
                 views.setProgressBar(R.id.widget_progress, 100, 0, false)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    views.setColorStateList(
+                        R.id.widget_progress,
+                        "setProgressTintList",
+                        ColorStateList.valueOf(mutedColor)
+                    )
+                }
                 views.setTextViewText(R.id.widget_next_task, "Open HyperChunk to add time blocks")
             }
 
@@ -212,7 +321,9 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                 currentMinute = currentMinute,
                 widthDp = widthDp,
                 heightDp = heightDp,
-                isMonochrome = isMonochrome
+                isMonochrome = isMonochrome,
+                accentColorInt = accentColorInt,
+                activeGlowColorInt = activeGlowColorInt
             )
             if (ringBitmap != null) {
                 views.setImageViewBitmap(R.id.widget_edge_ring, ringBitmap)
@@ -231,7 +342,9 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             currentMinute: Int,
             widthDp: Float,
             heightDp: Float,
-            isMonochrome: Boolean
+            isMonochrome: Boolean,
+            accentColorInt: Int,
+            activeGlowColorInt: Int
         ): Bitmap? {
             try {
                 val aspectRatio = (widthDp / heightDp).coerceIn(1.8f, 4.5f)
@@ -302,12 +415,12 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                     val adjEnd = adjStart + adjLen
 
                     val chunkColorInt = if (isMonochrome) {
-                        Color.WHITE
+                        composeColorToArgb(chunk.toMonochromeColor())
                     } else {
                         try {
                             Color.parseColor(chunk.colorHex)
                         } catch (_: Exception) {
-                            0xFF00F2FE.toInt()
+                            accentColorInt
                         }
                     }
 
@@ -343,17 +456,24 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
                 val pos = FloatArray(2)
                 pathMeasure.getPosTan(needleDist, pos, null)
 
+                // Glowing aura matching active chunk or accent color
+                val glowColor = if (isMonochrome) {
+                    0x66FFFFFF
+                } else {
+                    (0x66 shl 24) or (activeGlowColorInt and 0x00FFFFFF)
+                }
                 val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     style = Paint.Style.FILL
-                    color = 0x66FFFFFF
+                    color = glowColor
                 }
-                canvas.drawCircle(pos[0], pos[1], strokeWidthPx * 1.6f, glowPaint)
+                canvas.drawCircle(pos[0], pos[1], strokeWidthPx * 1.8f, glowPaint)
 
+                // Crisp solid white center bead
                 val beadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     style = Paint.Style.FILL
                     color = Color.WHITE
                 }
-                canvas.drawCircle(pos[0], pos[1], strokeWidthPx * 0.85f, beadPaint)
+                canvas.drawCircle(pos[0], pos[1], strokeWidthPx * 0.9f, beadPaint)
 
                 return bitmap
             } catch (e: Exception) {

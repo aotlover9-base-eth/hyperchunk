@@ -45,7 +45,7 @@
                 android:layout_marginStart="7dp"
                 android:layout_toEndOf="@id/widget_icon"
                 android:text="HYPERCHUNK"
-                android:textColor="#00F2FE"
+                android:textColor="#F43F5E"
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
@@ -62,7 +62,7 @@
                 android:paddingEnd="9dp"
                 android:paddingBottom="3dp"
                 android:text="NOW ACTIVE"
-                android:textColor="#A8FF78"
+                android:textColor="#F43F5E"
                 android:textSize="10sp"
                 android:textStyle="bold" />
         </RelativeLayout>
@@ -109,7 +109,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="45m left"
-                android:textColor="#00F2FE"
+                android:textColor="#F43F5E"
                 android:textSize="13sp"
                 android:textStyle="bold" />
         </LinearLayout>
