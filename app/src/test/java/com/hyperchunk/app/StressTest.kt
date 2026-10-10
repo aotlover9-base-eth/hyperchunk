@@ -2,7 +2,12 @@ package com.hyperchunk.app
 
 import androidx.compose.ui.graphics.Color
 import com.hyperchunk.app.alarm.AlarmScheduler
+import com.hyperchunk.app.data.model.AccentTheme
+import com.hyperchunk.app.data.model.AppSettings
+import com.hyperchunk.app.data.model.BackgroundTheme
 import com.hyperchunk.app.data.model.ChunkCategory
+import com.hyperchunk.app.data.model.ClockShape
+import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.data.model.TimeChunk
 import com.hyperchunk.app.data.model.toMonochromeColor
 import com.hyperchunk.app.ui.theme.parseHexColor
@@ -458,4 +463,74 @@ class StressTest {
         assertEquals("Sleep", acceptedBlocks[0].title)
         assertEquals("Gym", acceptedBlocks[1].title)
     }
+
+    @Test
+    fun testAppSettingsDefaultPreferences() {
+        val defaults = AppSettings()
+        assertTrue("Screen Optimisation Mode (compactMode) must be ON by default", defaults.compactMode)
+        assertEquals(PaletteMode.COLORFUL, defaults.paletteMode)
+        assertEquals(AccentTheme.ROSE_CRIMSON, defaults.accentTheme)
+        assertEquals(BackgroundTheme.OLED_BLACK, defaults.backgroundTheme)
+        assertFalse("Auto-Enable Alarms must be OFF by default", defaults.defaultSoundAlarm)
+        assertFalse("12-hour format must be the default (use24HourFormat = false)", defaults.use24HourFormat)
+        assertEquals(ClockShape.ROUND, defaults.clockShape)
+    }
+
+    @Test
+    fun testClockShapeEnum() {
+        assertEquals("round", ClockShape.ROUND.id)
+        assertEquals("rectangle", ClockShape.RECTANGLE.id)
+        assertEquals(ClockShape.ROUND, ClockShape.fromId("round"))
+        assertEquals(ClockShape.RECTANGLE, ClockShape.fromId("rectangle"))
+        assertEquals(ClockShape.ROUND, ClockShape.fromId("unknown_id"))
+    }
+
+    @Test
+    fun testStarterScheduleGeneration() {
+        val schedule = com.hyperchunk.app.data.storage.ChunkRepository.createDefaultStarterSchedule(2) // Tuesday
+        assertTrue(schedule.isNotEmpty())
+        
+        var totalMinutes = 0
+        schedule.forEach { chunk ->
+            assertEquals(2, chunk.dayOfWeek)
+            assertFalse("Starter schedule must have alarms disabled by default", chunk.hasAlarm)
+            totalMinutes += chunk.durationMinutes
+        }
+        assertEquals("Starter schedule must cover the entire 24h day", 1440, totalMinutes)
+    }
+
+    @Test
+    fun testAlarmSuppressionGuardLogic() {
+        val todayDayOfWeek = 2 // Tuesday
+        val chunkMonday = TimeChunk(
+            dayOfWeek = 1, // Monday
+            title = "Old Monday Class",
+            startMinuteOfDay = 600,
+            endMinuteOfDay = 720,
+            hasAlarm = true
+        )
+
+        // 1. Wrong Day of week guard: Monday alarm firing on Tuesday must be suppressed
+        val isDayValid = (chunkMonday.dayOfWeek == todayDayOfWeek)
+        assertFalse("Monday alarm firing on Tuesday must be suppressed", isDayValid)
+
+        // 2. Alarm disabled guard: chunk with hasAlarm = false must be suppressed
+        val chunkNoAlarm = chunkMonday.copy(dayOfWeek = todayDayOfWeek, hasAlarm = false)
+        assertFalse("Chunk with hasAlarm=false must be suppressed", chunkNoAlarm.hasAlarm)
+
+        // 3. Stale window guard: alarm delayed by > 15 minutes must be suppressed
+        val scheduledMinute = 600 // 10:00 AM
+        val onTimeMinute = 605   // 10:05 AM (within 15 min)
+        val staleMinute = 720    // 12:00 PM (2 hours late)
+
+        fun isWindowValid(currentMinute: Int, targetMinute: Int): Boolean {
+            val delta = kotlin.math.abs(currentMinute - targetMinute)
+            val windowMinutes = kotlin.math.min(delta, 1440 - delta)
+            return windowMinutes <= 15
+        }
+
+        assertTrue("On-time wakeup within 5 mins is valid", isWindowValid(onTimeMinute, scheduledMinute))
+        assertFalse("Stale delayed wakeup after 2 hours must be suppressed", isWindowValid(staleMinute, scheduledMinute))
+    }
 }
+

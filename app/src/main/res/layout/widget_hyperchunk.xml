@@ -3,16 +3,24 @@
     android:id="@+id/widget_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg_hyperos"
-    android:paddingStart="18dp"
-    android:paddingTop="16dp"
-    android:paddingEnd="18dp"
-    android:paddingBottom="16dp">
+    android:background="@drawable/widget_bg_hyperos">
+
+    <!-- 24-Hour Color Edge Ring Canvas -->
+    <ImageView
+        android:id="@+id/widget_edge_ring"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:contentDescription="24h Color Edge Ring" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
+        android:paddingStart="18dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="16dp"
         android:orientation="vertical">
 
         <!-- Header bar -->

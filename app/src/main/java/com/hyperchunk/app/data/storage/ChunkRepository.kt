@@ -9,6 +9,7 @@ import com.hyperchunk.app.data.model.TimeChunk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Calendar
 import java.util.UUID
 
 data class RoutinePreset(
@@ -64,17 +65,36 @@ class ChunkRepository(private val context: Context) {
         prefs.edit().putString(KEY_CUSTOM_PRESETS, json).apply()
     }
 
+    private fun getCalendarDayOfWeek(): Int {
+        return when (Calendar.getInstance().get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> 1
+            Calendar.TUESDAY -> 2
+            Calendar.WEDNESDAY -> 3
+            Calendar.THURSDAY -> 4
+            Calendar.FRIDAY -> 5
+            Calendar.SATURDAY -> 6
+            Calendar.SUNDAY -> 7
+            else -> 1
+        }
+    }
+
     private fun loadChunks() {
         val isClean = prefs.getBoolean(KEY_VERSION, false)
         if (!isClean) {
             prefs.edit().remove(KEY_CHUNKS).putBoolean(KEY_VERSION, true).apply()
-            _chunks.value = emptyList()
+            val todayDay = getCalendarDayOfWeek()
+            val starter = createDefaultStarterSchedule(todayDay)
+            saveChunksToStorage(starter)
+            _chunks.value = starter
             return
         }
 
         val json = prefs.getString(KEY_CHUNKS, null)
         if (json.isNullOrBlank()) {
-            _chunks.value = emptyList()
+            val todayDay = getCalendarDayOfWeek()
+            val starter = createDefaultStarterSchedule(todayDay)
+            saveChunksToStorage(starter)
+            _chunks.value = starter
         } else {
             val type = object : TypeToken<List<TimeChunk>>() {}.type
             val list: List<TimeChunk> = try {
@@ -82,9 +102,18 @@ class ChunkRepository(private val context: Context) {
             } catch (e: Exception) {
                 emptyList()
             }
-            _chunks.value = list
+            if (list.isEmpty()) {
+                val todayDay = getCalendarDayOfWeek()
+                val starter = createDefaultStarterSchedule(todayDay)
+                saveChunksToStorage(starter)
+                _chunks.value = starter
+            } else {
+                _chunks.value = list
+            }
         }
     }
+
+    fun createDefaultStarterSchedule(dayOfWeek: Int): List<TimeChunk> = Companion.createDefaultStarterSchedule(dayOfWeek)
 
     private fun saveChunksToStorage(list: List<TimeChunk>) {
         val json = gson.toJson(list)
@@ -116,6 +145,9 @@ class ChunkRepository(private val context: Context) {
     }
 
     fun deleteChunk(id: String) {
+        try {
+            com.hyperchunk.app.alarm.AlarmScheduler.cancelChunkAlarm(context, id)
+        } catch (_: Exception) {}
         val updated = _chunks.value.filterNot { it.id == id }
         saveChunksToStorage(updated)
         _chunks.value = updated
@@ -130,6 +162,11 @@ class ChunkRepository(private val context: Context) {
     }
 
     fun clearDay(dayOfWeek: Int) {
+        _chunks.value.filter { it.dayOfWeek == dayOfWeek && it.hasAlarm }.forEach { chunk ->
+            try {
+                com.hyperchunk.app.alarm.AlarmScheduler.cancelChunkAlarm(context, chunk.id)
+            } catch (_: Exception) {}
+        }
         val updated = _chunks.value.filterNot { it.dayOfWeek == dayOfWeek }
         saveChunksToStorage(updated)
         _chunks.value = updated
@@ -495,5 +532,82 @@ class ChunkRepository(private val context: Context) {
                 )
             )
         )
+
+        fun createDefaultStarterSchedule(dayOfWeek: Int): List<TimeChunk> {
+            return listOf(
+                TimeChunk(
+                    dayOfWeek = dayOfWeek,
+                    title = "Sleep & Restoration",
+                    startMinuteOfDay = 0,
+                    endMinuteOfDay = 420,
+                    category = ChunkCategory.SLEEP,
+                    colorHex = ChunkCategory.SLEEP.defaultColor,
+                    hasAlarm = false
+                ),
+                TimeChunk(
+                    dayOfWeek = dayOfWeek,
+                    title = "Morning Fuel & Routine",
+                    startMinuteOfDay = 420,
+                    endMinuteOfDay = 510,
+                    category = ChunkCategory.ROUTINE,
+                    colorHex = ChunkCategory.ROUTINE.defaultColor,
+                    hasAlarm = false
+                ),
+                TimeChunk(
+                    dayOfWeek = dayOfWeek,
+                    title = "Deep Focus: Build",
+                    startMinuteOfDay = 510,
+                    endMinuteOfDay = 750,
+                    category = ChunkCategory.WORK,
+                    colorHex = ChunkCategory.WORK.defaultColor,
+                    hasAlarm = false
+                ),
+                TimeChunk(
+                    dayOfWeek = dayOfWeek,
+                    title = "Clean Lunch & Recharge",
+                    startMinuteOfDay = 750,
+                    endMinuteOfDay = 810,
+                    category = ChunkCategory.MEAL,
+                    colorHex = ChunkCategory.MEAL.defaultColor,
+                    hasAlarm = false
+                ),
+                TimeChunk(
+                    dayOfWeek = dayOfWeek,
+                    title = "Sprint & Projects",
+                    startMinuteOfDay = 810,
+                    endMinuteOfDay = 1020,
+                    category = ChunkCategory.STUDY,
+                    colorHex = ChunkCategory.STUDY.defaultColor,
+                    hasAlarm = false
+                ),
+                TimeChunk(
+                    dayOfWeek = dayOfWeek,
+                    title = "Workout & Training",
+                    startMinuteOfDay = 1020,
+                    endMinuteOfDay = 1110,
+                    category = ChunkCategory.FITNESS,
+                    colorHex = ChunkCategory.FITNESS.defaultColor,
+                    hasAlarm = false
+                ),
+                TimeChunk(
+                    dayOfWeek = dayOfWeek,
+                    title = "Dinner & Social",
+                    startMinuteOfDay = 1110,
+                    endMinuteOfDay = 1230,
+                    category = ChunkCategory.MEAL,
+                    colorHex = ChunkCategory.MEAL.defaultColor,
+                    hasAlarm = false
+                ),
+                TimeChunk(
+                    dayOfWeek = dayOfWeek,
+                    title = "Unplug & Wind Down",
+                    startMinuteOfDay = 1230,
+                    endMinuteOfDay = 1440,
+                    category = ChunkCategory.REST,
+                    colorHex = ChunkCategory.REST.defaultColor,
+                    hasAlarm = false
+                )
+            )
+        }
     }
 }

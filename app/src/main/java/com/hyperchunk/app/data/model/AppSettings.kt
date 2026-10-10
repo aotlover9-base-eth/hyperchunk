@@ -77,14 +77,25 @@ enum class HapticMode(val id: String, val displayName: String) {
     }
 }
 
+enum class ClockShape(val id: String, val displayName: String) {
+    ROUND("round", "Circular Dial"),
+    RECTANGLE("rectangle", "Rectangle Chrono");
+
+    companion object {
+        fun fromId(id: String): ClockShape =
+            values().firstOrNull { it.id == id } ?: ROUND
+    }
+}
+
 data class AppSettings(
     val fontScale: Float = 1.0f,
-    val compactMode: Boolean = false,
-    val paletteMode: PaletteMode = PaletteMode.MONOCHROME,
-    val accentTheme: AccentTheme = AccentTheme.PIXEL_BLUE,
-    val backgroundTheme: BackgroundTheme = BackgroundTheme.HYPER_GRAPHITE,
+    val compactMode: Boolean = true,
+    val paletteMode: PaletteMode = PaletteMode.COLORFUL,
+    val accentTheme: AccentTheme = AccentTheme.ROSE_CRIMSON,
+    val backgroundTheme: BackgroundTheme = BackgroundTheme.OLED_BLACK,
     val hapticMode: HapticMode = HapticMode.SMOOTH,
     val use24HourFormat: Boolean = false,
-    val defaultSoundAlarm: Boolean = true,
-    val defaultDurationMinutes: Int = 60
+    val defaultSoundAlarm: Boolean = false,
+    val defaultDurationMinutes: Int = 60,
+    val clockShape: ClockShape = ClockShape.ROUND
 )

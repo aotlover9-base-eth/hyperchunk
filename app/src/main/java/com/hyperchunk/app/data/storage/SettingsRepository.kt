@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.hyperchunk.app.data.model.AccentTheme
 import com.hyperchunk.app.data.model.AppSettings
 import com.hyperchunk.app.data.model.BackgroundTheme
+import com.hyperchunk.app.data.model.ClockShape
 import com.hyperchunk.app.data.model.HapticMode
 import com.hyperchunk.app.data.model.PaletteMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,14 +22,15 @@ class SettingsRepository(context: Context) {
 
     private fun loadSettings(): AppSettings {
         val fontScale = prefs.getFloat(KEY_FONT_SCALE, 1.0f).coerceIn(0.80f, 1.25f)
-        val compactMode = prefs.getBoolean(KEY_COMPACT_MODE, false)
-        val paletteId = prefs.getString(KEY_PALETTE_MODE, PaletteMode.MONOCHROME.id) ?: PaletteMode.MONOCHROME.id
-        val accentId = prefs.getString(KEY_ACCENT_THEME, AccentTheme.PIXEL_BLUE.id) ?: AccentTheme.PIXEL_BLUE.id
-        val bgId = prefs.getString(KEY_BG_THEME, BackgroundTheme.HYPER_GRAPHITE.id) ?: BackgroundTheme.HYPER_GRAPHITE.id
+        val compactMode = prefs.getBoolean(KEY_COMPACT_MODE, true)
+        val paletteId = prefs.getString(KEY_PALETTE_MODE, PaletteMode.COLORFUL.id) ?: PaletteMode.COLORFUL.id
+        val accentId = prefs.getString(KEY_ACCENT_THEME, AccentTheme.ROSE_CRIMSON.id) ?: AccentTheme.ROSE_CRIMSON.id
+        val bgId = prefs.getString(KEY_BG_THEME, BackgroundTheme.OLED_BLACK.id) ?: BackgroundTheme.OLED_BLACK.id
         val hapticId = prefs.getString(KEY_HAPTIC_MODE, HapticMode.SMOOTH.id) ?: HapticMode.SMOOTH.id
         val use24h = prefs.getBoolean(KEY_24H_FORMAT, false)
-        val soundAlarm = prefs.getBoolean(KEY_DEFAULT_ALARM, true)
+        val soundAlarm = prefs.getBoolean(KEY_DEFAULT_ALARM, false)
         val duration = prefs.getInt(KEY_DEFAULT_DURATION, 60)
+        val clockShapeId = prefs.getString(KEY_CLOCK_SHAPE, ClockShape.ROUND.id) ?: ClockShape.ROUND.id
 
         return AppSettings(
             fontScale = fontScale,
@@ -39,7 +41,8 @@ class SettingsRepository(context: Context) {
             hapticMode = HapticMode.fromId(hapticId),
             use24HourFormat = use24h,
             defaultSoundAlarm = soundAlarm,
-            defaultDurationMinutes = duration
+            defaultDurationMinutes = duration,
+            clockShape = ClockShape.fromId(clockShapeId)
         )
     }
 
@@ -54,6 +57,7 @@ class SettingsRepository(context: Context) {
             .putBoolean(KEY_24H_FORMAT, newSettings.use24HourFormat)
             .putBoolean(KEY_DEFAULT_ALARM, newSettings.defaultSoundAlarm)
             .putInt(KEY_DEFAULT_DURATION, newSettings.defaultDurationMinutes)
+            .putString(KEY_CLOCK_SHAPE, newSettings.clockShape.id)
             .apply()
         _settings.value = newSettings
     }
@@ -90,6 +94,10 @@ class SettingsRepository(context: Context) {
         saveAndEmit(_settings.value.copy(defaultSoundAlarm = enabled))
     }
 
+    fun updateClockShape(shape: ClockShape) {
+        saveAndEmit(_settings.value.copy(clockShape = shape))
+    }
+
     fun resetToDefaults() {
         saveAndEmit(AppSettings())
     }
@@ -105,5 +113,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_24H_FORMAT = "pref_24h_format"
         private const val KEY_DEFAULT_ALARM = "pref_default_alarm"
         private const val KEY_DEFAULT_DURATION = "pref_default_duration"
+        private const val KEY_CLOCK_SHAPE = "pref_clock_shape"
     }
 }

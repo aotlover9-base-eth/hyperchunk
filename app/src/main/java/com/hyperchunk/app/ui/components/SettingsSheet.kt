@@ -49,9 +49,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.CropSquare
+import androidx.compose.material.icons.filled.Schedule
 import com.hyperchunk.app.data.model.AccentTheme
 import com.hyperchunk.app.data.model.AppSettings
 import com.hyperchunk.app.data.model.BackgroundTheme
+import com.hyperchunk.app.data.model.ClockShape
 import com.hyperchunk.app.data.model.HapticMode
 import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.ui.theme.LocalAppThemeColors
@@ -72,6 +75,7 @@ fun SettingsSheet(
     onHapticModeChanged: (HapticMode) -> Unit,
     on24HourFormatChanged: (Boolean) -> Unit,
     onDefaultAlarmChanged: (Boolean) -> Unit,
+    onClockShapeChanged: (ClockShape) -> Unit,
     onResetDefaults: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -511,7 +515,59 @@ fun SettingsSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 6. Time & Alarm Preferences
+            // 6. Chronograph Dial Shape Selector (Circular vs Rectangle)
+            SettingsSectionHeader(
+                icon = { Icon(Icons.Default.Schedule, contentDescription = null, tint = appColors.primary, modifier = Modifier.size(18.dp)) },
+                title = "CHRONOGRAPH DIAL SHAPE"
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ClockShape.values().forEach { shape ->
+                    val isSelected = (settings.clockShape == shape)
+                    val cardBg by animateColorAsState(
+                        targetValue = if (isSelected) appColors.surfaceElevated else appColors.surfaceVariant,
+                        label = "shapeCardBg"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(cardBg)
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) appColors.primary else Color.Transparent,
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .clickable { onClockShapeChanged(shape) }
+                            .padding(vertical = 14.dp, horizontal = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                if (shape == ClockShape.ROUND) Icons.Default.Schedule else Icons.Default.CropSquare,
+                                contentDescription = null,
+                                tint = if (isSelected) appColors.primary else TextSecondary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = shape.displayName,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) TextPrimary else TextSecondary
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 7. Time & Alarm Preferences
             SettingsSectionHeader(
                 icon = null,
                 title = "DEFAULTS & CLOCK"

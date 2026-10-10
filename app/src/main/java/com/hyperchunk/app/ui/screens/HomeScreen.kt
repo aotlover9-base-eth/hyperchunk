@@ -25,12 +25,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hyperchunk.app.data.model.ClockShape
 import com.hyperchunk.app.data.model.PaletteMode
 import com.hyperchunk.app.data.model.TimeChunk
 import com.hyperchunk.app.data.model.toMonochromeColor
@@ -59,6 +65,7 @@ import com.hyperchunk.app.data.storage.ChunkRepository
 import com.hyperchunk.app.data.storage.SettingsRepository
 import com.hyperchunk.app.data.storage.RoutinePreset
 import com.hyperchunk.app.ui.components.Chunk24hChronograph
+import com.hyperchunk.app.ui.components.Chunk24hRectangleChronograph
 import com.hyperchunk.app.ui.components.ChunkCard
 import com.hyperchunk.app.ui.components.DaySelector
 import com.hyperchunk.app.ui.components.EditPresetSheet
@@ -198,6 +205,7 @@ fun HomeScreen(
     var showEditSheet by remember { mutableStateOf(false) }
     var showRoutineHubSheet by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
+    var showResetDayConfirmDialog by remember { mutableStateOf(false) }
 
     val customPresets by repository.customPresets.collectAsState()
     var presetToEdit by remember { mutableStateOf<RoutinePreset?>(null) }
@@ -302,7 +310,7 @@ fun HomeScreen(
                     }
                 }
 
-                // Header Action Buttons (Routines & Settings)
+                // Header Action Buttons (Routines, Reset Day & Settings)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -331,6 +339,24 @@ fun HomeScreen(
                                 color = TextPrimary
                             )
                         }
+                    }
+
+                    // Reset Day Button (adjacent to Routines)
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(appColors.surface)
+                            .border(1.dp, appColors.border, RoundedCornerShape(16.dp))
+                            .clickable { showResetDayConfirmDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.RestartAlt,
+                            contentDescription = "Reset Day",
+                            tint = appColors.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
 
                     // Settings Button
@@ -365,17 +391,29 @@ fun HomeScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // 1. Redesigned 24-Hour Polar Chronograph Dial
+                // 1. Redesigned 24-Hour Chronograph Dial (Round vs Rectangle)
                 item {
-                    Chunk24hChronograph(
-                        chunks = dayChunks,
-                        currentMinute = currentMinuteOfDay,
-                        activeChunk = if (selectedDay == todayDayOfWeek) activeChunk else null,
-                        nextChunk = nextChunk,
-                        isToday = (selectedDay == todayDayOfWeek),
-                        dayName = dayNames[selectedDay - 1],
-                        compactMode = settings.compactMode
-                    )
+                    if (settings.clockShape == ClockShape.RECTANGLE) {
+                        Chunk24hRectangleChronograph(
+                            chunks = dayChunks,
+                            currentMinute = currentMinuteOfDay,
+                            activeChunk = if (selectedDay == todayDayOfWeek) activeChunk else null,
+                            nextChunk = nextChunk,
+                            isToday = (selectedDay == todayDayOfWeek),
+                            dayName = dayNames[selectedDay - 1],
+                            compactMode = settings.compactMode
+                        )
+                    } else {
+                        Chunk24hChronograph(
+                            chunks = dayChunks,
+                            currentMinute = currentMinuteOfDay,
+                            activeChunk = if (selectedDay == todayDayOfWeek) activeChunk else null,
+                            nextChunk = nextChunk,
+                            isToday = (selectedDay == todayDayOfWeek),
+                            dayName = dayNames[selectedDay - 1],
+                            compactMode = settings.compactMode
+                        )
+                    }
                 }
 
                 // 2. Day Overview & Category Analytics Card (if chunks exist)
@@ -936,8 +974,53 @@ fun HomeScreen(
             onHapticModeChanged = { settingsRepository.updateHapticMode(it) },
             on24HourFormatChanged = { settingsRepository.update24HourFormat(it) },
             onDefaultAlarmChanged = { settingsRepository.updateDefaultSoundAlarm(it) },
+            onClockShapeChanged = { settingsRepository.updateClockShape(it) },
             onResetDefaults = { settingsRepository.resetToDefaults() },
             onDismiss = { showSettingsSheet = false }
+        )
+    }
+
+    // Reset Day Confirmation Dialog
+    if (showResetDayConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDayConfirmDialog = false },
+            title = {
+                Text(
+                    text = "Reset ${dayNames[selectedDay - 1]} Schedule?",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    text = "This will remove all scheduled chunks for ${dayNames[selectedDay - 1]} and cancel any active alarms.",
+                    color = Color(0xFFCBD5E1)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        repository.getChunksForDay(selectedDay).filter { it.hasAlarm }.forEach { onCancelAlarm(it.id) }
+                        repository.clearDay(selectedDay)
+                        showResetDayConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEF4444)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Reset Day", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showResetDayConfirmDialog = false }
+                ) {
+                    Text("Cancel", color = Color(0xFF94A3B8))
+                }
+            },
+            containerColor = appColors.surfaceElevated,
+            shape = RoundedCornerShape(20.dp)
         )
     }
 }
