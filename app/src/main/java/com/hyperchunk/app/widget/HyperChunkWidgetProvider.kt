@@ -83,35 +83,42 @@ class HyperChunkWidgetProvider : AppWidgetProvider() {
             val canvas = Canvas(bitmap)
             val cx = sizePx / 2f
             val cy = sizePx / 2f
-            val radius = sizePx * 0.44f
+            val outerR = sizePx * 0.40f
+            val innerR = outerR * 0.58f
 
-            // Outer ring tinted with accent/theme color
-            val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.FILL
+            // 1. Outer Chrono arc with open angular notch
+            val outerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 3.6f
+                strokeCap = Paint.Cap.ROUND
                 color = accentColorInt
             }
-            canvas.drawCircle(cx, cy, radius, ringPaint)
+            val outerRect = RectF(cx - outerR, cy - outerR, cx + outerR, cy + outerR)
+            canvas.drawArc(outerRect, -70f, 310f, false, outerPaint)
 
-            // Inner dark center
+            // 2. Inner orbit arc
             val innerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.FILL
-                color = 0xFF151A24.toInt()
-            }
-            canvas.drawCircle(cx, cy, radius * 0.58f, innerPaint)
-
-            // Crisp white clock hands
-            val handPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
-                strokeWidth = 3.2f
+                strokeWidth = 2.4f
                 strokeCap = Paint.Cap.ROUND
+                color = (0x88 shl 24) or (accentColorInt and 0x00FFFFFF)
+            }
+            val innerRect = RectF(cx - innerR, cy - innerR, cx + innerR, cy + innerR)
+            canvas.drawArc(innerRect, 60f, 200f, false, innerPaint)
+
+            // 3. Center jewel bead
+            val beadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
                 color = Color.WHITE
             }
-            val handPath = Path().apply {
-                moveTo(cx, cy - radius * 0.42f)
-                lineTo(cx, cy)
-                lineTo(cx + radius * 0.35f, cy)
-            }
-            canvas.drawPath(handPath, handPaint)
+            canvas.drawCircle(cx, cy, 3.8f, beadPaint)
+
+            // 4. Live orbit bead at top notch (-70 deg)
+            val notchRad = Math.toRadians(-70.0)
+            val notchX = (cx + outerR * Math.cos(notchRad)).toFloat()
+            val notchY = (cy + outerR * Math.sin(notchRad)).toFloat()
+            canvas.drawCircle(notchX, notchY, 3.2f, beadPaint)
+
             return bitmap
         }
 

@@ -2,17 +2,32 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="16dp"
     android:height="16dp"
-    android:viewportWidth="16"
-    android:viewportHeight="16">
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer Chrono Ring -->
     <path
-        android:fillColor="#00F2FE"
-        android:pathData="M8,1.5 A6.5,6.5 0 1,1 7.9,1.5" />
-    <path
-        android:fillColor="#151A24"
-        android:pathData="M8,4.5 A3.5,3.5 0 1,1 7.9,4.5" />
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.2"
+        android:fillColor="#00000000"
+        android:strokeColor="#F43F5E"
+        android:strokeWidth="7.0"
         android:strokeLineCap="round"
-        android:pathData="M8,5 L8,8 L10,8" />
+        android:pathData="M 62.89,29.57 A 26,26 0 1,1 41.00,31.48" />
+
+    <!-- Inner Orbit Arc -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#88F43F5E"
+        android:strokeWidth="5.0"
+        android:strokeLineCap="round"
+        android:pathData="M 61.60,67.16 A 15.2,15.2 0 1,1 51.36,39.03" />
+
+    <!-- Center Jewel Bead -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 54,48 A 6,6 0 1,1 53.9,48" />
+
+    <!-- Live Orbit Bead at Notch -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 62.89,24.57 A 5,5 0 1,1 62.8,24.57" />
 </vector>

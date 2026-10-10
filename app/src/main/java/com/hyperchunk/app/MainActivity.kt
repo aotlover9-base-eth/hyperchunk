@@ -54,6 +54,15 @@ class MainActivity : ComponentActivity() {
         // Update widget on launch
         HyperChunkWidgetProvider.updateAllWidgets(this)
 
+        // Sync launcher icon on launch
+        try {
+            com.hyperchunk.app.data.storage.DynamicIconManager.updateAppIcon(
+                this,
+                settingsRepository.settings.value.accentTheme,
+                settingsRepository.settings.value.paletteMode
+            )
+        } catch (_: Exception) {}
+
         setContent {
             val settings by settingsRepository.settings.collectAsState()
             HyperTheme(settings = settings) {

@@ -63,6 +63,13 @@ class SettingsRepository(private val context: Context) {
         try {
             com.hyperchunk.app.widget.HyperChunkWidgetProvider.updateAllWidgets(context)
         } catch (_: Exception) {}
+        try {
+            DynamicIconManager.updateAppIcon(
+                context,
+                newSettings.accentTheme,
+                newSettings.paletteMode
+            )
+        } catch (_: Exception) {}
     }
 
     fun updateFontScale(scale: Float) {

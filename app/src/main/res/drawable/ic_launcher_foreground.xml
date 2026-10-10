@@ -5,71 +5,37 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Subtle base track ring -->
+    <!-- Subtle guide ring -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#222836"
+        android:strokeColor="#222938"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:pathData="M 54,28 A 26,26 0 1,1 53.9,28" />
+
+    <!-- Outer Chrono Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F43F5E"
         android:strokeWidth="5.5"
         android:strokeLineCap="round"
-        android:pathData="M54,28 A26,26 0 1,1 53.9,28" />
+        android:pathData="M 62.89,29.57 A 26,26 0 1,1 41.00,31.48" />
 
-    <!-- Chunk 1: Focus/Lecture Segment (Hyper Cyan) -->
+    <!-- Inner Orbit Arc -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#00F2FE"
-        android:strokeWidth="5.5"
-        android:strokeLineCap="round"
-        android:pathData="M54,28 A26,26 0 0,1 76.5,67" />
-
-    <!-- Chunk 2: Routine/Energy Segment (Electric Lime) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#A8FF78"
-        android:strokeWidth="5.5"
-        android:strokeLineCap="round"
-        android:pathData="M70.7,73.9 A26,26 0 0,1 31.5,67" />
-
-    <!-- Chunk 3: Sleep/Rest Segment (Indigo/Violet Glow) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#818CF8"
-        android:strokeWidth="5.5"
-        android:strokeLineCap="round"
-        android:pathData="M28.4,49.5 A26,26 0 0,1 45.1,29.5" />
-
-    <!-- Minimal precision tick marks at cardinal points -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#4A5568"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M54,17 L54,19 M91,54 L89,54 M54,91 L54,89 M17,54 L19,54" />
-
-    <!-- Minimal Clock Hands -->
-    <!-- Hour Hand (White) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#88F43F5E"
         android:strokeWidth="3.8"
         android:strokeLineCap="round"
-        android:pathData="M54,54 L54,38" />
+        android:pathData="M 61.60,67.16 A 15.2,15.2 0 1,1 51.36,39.03" />
 
-    <!-- Minute Hand (Hyper Cyan) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#00F2FE"
-        android:strokeWidth="2.8"
-        android:strokeLineCap="round"
-        android:pathData="M54,54 L69,45" />
-
-    <!-- Center Pivot Hub (White outer dot) -->
+    <!-- Center Jewel Bead -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" />
+        android:pathData="M 54,49.8 A 4.2,4.2 0 1,1 53.9,49.8" />
 
-    <!-- Center Pivot Inner Core (Dark accent) -->
+    <!-- Live Orbit Bead at Notch -->
     <path
-        android:fillColor="#0D0F14"
-        android:pathData="M54,54m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" />
-
+        android:fillColor="#FFFFFF"
+        android:pathData="M 62.89,26.17 A 3.4,3.4 0 1,1 62.8,26.17" />
 </vector>

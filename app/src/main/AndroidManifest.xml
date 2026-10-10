@@ -21,12 +21,112 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.HyperChunk"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Dynamic Launcher Icon: Rose Crimson (Default) -->
+        <activity-alias
+            android:name=".MainActivityRoseCrimson"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_rose_crimson"
+            android:roundIcon="@mipmap/ic_launcher_rose_crimson"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <!-- Dynamic Launcher Icon: Pixel Blue -->
+        <activity-alias
+            android:name=".MainActivityPixelBlue"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_pixel_blue"
+            android:roundIcon="@mipmap/ic_launcher_pixel_blue"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Dynamic Launcher Icon: Cyber Cyan -->
+        <activity-alias
+            android:name=".MainActivityCyberCyan"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_cyber_cyan"
+            android:roundIcon="@mipmap/ic_launcher_cyber_cyan"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Dynamic Launcher Icon: Electric Lime -->
+        <activity-alias
+            android:name=".MainActivityElectricLime"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_electric_lime"
+            android:roundIcon="@mipmap/ic_launcher_electric_lime"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Dynamic Launcher Icon: Amethyst Violet -->
+        <activity-alias
+            android:name=".MainActivityAmethystViolet"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_amethyst_violet"
+            android:roundIcon="@mipmap/ic_launcher_amethyst_violet"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Dynamic Launcher Icon: Sunset Amber -->
+        <activity-alias
+            android:name=".MainActivitySunsetAmber"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_sunset_amber"
+            android:roundIcon="@mipmap/ic_launcher_sunset_amber"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Dynamic Launcher Icon: Monochrome -->
+        <activity-alias
+            android:name=".MainActivityMonochrome"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_monochrome"
+            android:roundIcon="@mipmap/ic_launcher_monochrome"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- Alarm & Reminder Broadcast Receiver -->
         <receiver
