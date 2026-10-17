@@ -1,6 +1,7 @@
 <div align="center">
 
 # ⏱️ HyperChunk
+### (currently optimised for hyper os 3)
 ### The 24-Hour Polar Visual Time Planner for Android & Xiaomi HyperOS
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple?style=flat&logo=kotlin)](https://kotlinlang.org)
@@ -81,7 +82,7 @@ Choose how you want to visualize your 24 hours. Both modes render real-time colo
   </tr>
 </table>
 
-- **Day Breakdown Bar**: Color-segmented progress bar calculating your total active hours vs remaining free hours across Monday–Sunday.
+- **Day Breakdown Bar**: Color-segmented progress bar calculating your total active hours vs remaining free hours across Monday to Sunday.
 - **Live `• NOW` Indicator**: Highlights the currently active chunk with a glowing accent border and real-time remaining countdown.
 - **⚡ Fill Free Slots**: One tap automatically scans your day for unscheduled gaps and offers to schedule them as productive focus or recovery blocks.
 - **Interactive Drum Wheel Picker**: Set start and end times with smooth vertical scrolling, inertial physics, and tactile haptic clicks.
@@ -220,7 +221,7 @@ app/src/main/java/com/hyperchunk/app/
 │   │   ├── Chunk24hRectangleChronograph.kt # Widescreen Rectangular Chrono Dial
 │   │   ├── Chunk24hBar.kt               # Segmented daily breakdown progress & active stats bar
 │   │   ├── ChunkCard.kt                 # Timeline block card with category bar & alarm toggle
-│   │   ├── DaySelector.kt               # Mon–Sun horizontal day-of-week navigation pill
+│   │   ├── DaySelector.kt               # Mon to Sun horizontal day-of-week navigation pill
 │   │   ├── HyperCard.kt                 # HyperOS 3 frosted squircle container component
 │   │   ├── RoutineHubSheet.kt           # Archetype routines & schedule replication bottom sheet
 │   │   ├── SettingsSheet.kt             # Appearance, palette, font scaling, & haptics bottom sheet
